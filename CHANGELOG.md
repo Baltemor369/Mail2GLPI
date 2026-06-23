@@ -5,6 +5,27 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.3.0] - 2026-06-23
+
+### Ajouté
+- **Brique A — Squelette du plugin GLPI 11** (clé `mail2glpi`) dans `plugin/` : dropzone
+  injectée dans le formulaire de création de ticket (hook `post_itil_info_section`), endpoint
+  AJAX d'analyse, parsing MIME du `.eml` via laminas/laminas-mail (fourni par GLPI), mapping
+  e-mail → ticket et pré-remplissage du titre et de la description.
+- `setup.php`/`hook.php` (init, hooks, prérequis), `composer.json` (autoload PSR-4
+  `GlpiPlugin\Mail2glpi`), assets JS/CSS, dossier `locales/`.
+
+### Sécurité
+- Endpoint AJAX protégé : authentification, droit `ticket/CREATE`, jeton CSRF, validation
+  stricte de l'upload (.eml, taille réelle sur disque, `is_uploaded_file`).
+- Description pré-remplie en **texte échappé** (pas d'injection de HTML non fiable).
+- Garde-fous anti-DoS dans le parsing (profondeur et nombre de parties bornés, taille des
+  pièces jointes estimée sans décodage).
+
+### Notes
+- Rattachement du demandeur/observateurs par e-mail, upload des pièces jointes, règles de
+  mapping et support `.msg` laissés en `TODO` (V1/V2).
+
 ## [0.2.0] - 2026-06-23
 
 ### Ajouté

@@ -1,0 +1,17 @@
+{
+  "name": "mail2glpi/plugin",
+  "description": "Plugin GLPI : convertir un e-mail (.eml) glissé-déposé en ticket.",
+  "type": "glpi-plugin",
+  "license": "GPL-3.0-or-later",
+  "require": {
+    "php": ">=8.1"
+  },
+  "autoload": {
+    "psr-4": {
+      "GlpiPlugin\\Mail2glpi\\": "src/"
+    }
+  },
+  "config": {
+    "optimize-autoloader": true
+  }
+}
