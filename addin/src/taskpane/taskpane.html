@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Défense en profondeur : limite les scripts au bundle et au CDN Office. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' https://appsforoffice.microsoft.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src https:; object-src 'none'; base-uri 'self'"
+    />
+    <title>Mail2GLPI</title>
+    <!-- Office.js doit être chargé depuis le CDN Microsoft. -->
+    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  </head>
+  <body>
+    <main id="app" class="app">
+      <header class="app__header">
+        <h1>Mail2GLPI</h1>
+        <p class="app__subtitle">Convertir cet e-mail en ticket GLPI</p>
+      </header>
+
+      <!-- Aperçu du mapping e-mail → ticket -->
+      <section class="card" id="preview-card">
+        <h2>Aperçu</h2>
+        <dl class="preview">
+          <dt>Demandeur</dt>
+          <dd id="preview-sender">—</dd>
+          <dt>Titre</dt>
+          <dd id="preview-subject">—</dd>
+          <dt>Pièces jointes</dt>
+          <dd id="preview-attachments">—</dd>
+        </dl>
+        <details>
+          <summary>Corps de l'e-mail</summary>
+          <!-- Contenu injecté après assainissement DOMPurify. -->
+          <div id="preview-body" class="preview__body"></div>
+        </details>
+      </section>
+
+      <button id="create-ticket" type="button" class="btn btn--primary">
+        Créer le ticket GLPI
+      </button>
+
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+
+      <!-- Paramètres de connexion GLPI -->
+      <section class="card">
+        <details>
+          <summary>Paramètres GLPI</summary>
+          <form id="settings-form" class="form">
+            <label class="form__label">
+              URL de GLPI
+              <input type="url" id="cfg-baseUrl" placeholder="https://glpi.exemple.fr" required />
+            </label>
+            <label class="form__label">
+              App-Token
+              <input type="password" id="cfg-appToken" autocomplete="off" required />
+            </label>
+            <label class="form__label">
+              User-Token (personnel)
+              <input type="password" id="cfg-userToken" autocomplete="off" required />
+            </label>
+            <button type="submit" class="btn">Enregistrer</button>
+          </form>
+        </details>
+      </section>
+    </main>
+  </body>
+</html>

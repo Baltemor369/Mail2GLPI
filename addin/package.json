@@ -1,0 +1,40 @@
+{
+  "name": "mail2glpi-outlook-addin",
+  "version": "0.2.0",
+  "description": "Add-in Outlook (Office.js) pour convertir un e-mail en ticket GLPI via l'API REST.",
+  "private": true,
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "webpack --mode production",
+    "build:dev": "webpack --mode development",
+    "watch": "webpack --mode development --watch",
+    "dev-server": "webpack serve --mode development",
+    "start": "office-addin-debugging start manifest.xml",
+    "stop": "office-addin-debugging stop manifest.xml",
+    "validate": "office-addin-manifest validate manifest.xml",
+    "lint": "office-addin-lint check"
+  },
+  "dependencies": {
+    "core-js": "^3.37.0",
+    "dompurify": "^3.2.6"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@babel/preset-env": "^7.24.0",
+    "babel-loader": "^9.1.0",
+    "copy-webpack-plugin": "^12.0.0",
+    "css-loader": "^7.1.0",
+    "html-webpack-plugin": "^5.6.0",
+    "office-addin-debugging": "^6.0.0",
+    "office-addin-dev-certs": "^2.0.0",
+    "office-addin-lint": "^3.0.0",
+    "office-addin-manifest": "^2.0.0",
+    "style-loader": "^4.0.0",
+    "webpack": "^5.91.0",
+    "webpack-cli": "^5.1.0",
+    "webpack-dev-server": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

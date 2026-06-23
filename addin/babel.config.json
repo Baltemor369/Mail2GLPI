@@ -1,0 +1,12 @@
+{
+  "presets": [
+    [
+      "@babel/preset-env",
+      {
+        "targets": "defaults, ie 11",
+        "useBuiltIns": "entry",
+        "corejs": "3"
+      }
+    ]
+  ]
+}
