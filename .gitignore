@@ -1,0 +1,31 @@
+# Dépendances
+/node_modules/
+/vendor/
+
+# Build / dist
+/dist/
+/build/
+*.min.js.map
+
+# Environnement & secrets
+.env
+.env.*
+*.local
+config/*.local.php
+
+# Logs
+*.log
+
+# OS / éditeurs
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/
+
+# Outlook add-in (Office.js)
+/addin/node_modules/
+/addin/dist/
+
+# GLPI plugin (artefacts)
+/plugin/files/
+/plugin/*.cache
