@@ -31,16 +31,21 @@ Puis, dans GLPI : **Configuration > Plugins** → installer et activer « Mail2G
 
 ```
 plugin/
-  setup.php             Init du plugin, hooks, rendu de la section dropzone
-  hook.php              Install / uninstall (sans état pour l'instant)
-  composer.json         Autoload PSR-4 GlpiPlugin\Mail2glpi
-  ajax/parse.php        Endpoint : reçoit le .eml, renvoie le mapping en JSON
-  src/MailParser.php    Analyse MIME du .eml (laminas/laminas-mail fourni par GLPI)
-  src/TicketMapper.php  Mapping e-mail -> champs ticket + assainissement HTML
-  js/dropzone.js        Dropzone + pré-remplissage du formulaire
-  css/dropzone.css      Styles de la dropzone
-  locales/              Catalogues de traduction (domaine mail2glpi)
+  setup.php                    Init du plugin, hooks, rendu de la section dropzone
+  hook.php                     Install / uninstall (sans état pour l'instant)
+  composer.json                Autoload PSR-4 GlpiPlugin\Mail2glpi
+  src/MailParser.php           Analyse MIME du .eml (laminas/laminas-mail fourni par GLPI)
+  src/TicketMapper.php         Mapping e-mail -> champs ticket + assainissement HTML
+  public/ajax/parse.php        Endpoint : reçoit le .eml, renvoie le mapping en JSON
+  public/js/dropzone.js        Dropzone + pré-remplissage du formulaire
+  public/css/dropzone.css      Styles de la dropzone
+  locales/                     Catalogues de traduction (domaine mail2glpi)
 ```
+
+> **GLPI 11** : les assets statiques et scripts PHP accessibles par le web doivent être sous
+> `public/`. L'URL n'inclut pas `/public` (ex. `public/js/dropzone.js` →
+> `/plugins/mail2glpi/js/dropzone.js`). Les scripts de `public/` sont initialisés par le routeur
+> GLPI (pas d'`include inc/includes.php`).
 
 ## Sécurité
 

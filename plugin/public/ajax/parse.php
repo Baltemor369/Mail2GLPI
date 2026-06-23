@@ -8,7 +8,9 @@
 use GlpiPlugin\Mail2glpi\MailParser;
 use GlpiPlugin\Mail2glpi\TicketMapper;
 
-include('../../../inc/includes.php');
+// GLPI 11 : ce script est servi depuis plugins/mail2glpi/public/ via le routeur GLPI, qui
+// initialise automatiquement l'environnement (plus de include('inc/includes.php')) et applique
+// la stratégie de pare-feu par défaut (accès réservé aux utilisateurs authentifiés).
 
 header('Content-Type: application/json; charset=utf-8');
 

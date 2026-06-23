@@ -5,6 +5,15 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.3.3] - 2026-06-24
+
+### Corrigé
+- **Compatibilité GLPI 11** : déplacement des assets et de l'endpoint AJAX sous `public/`
+  (`public/js`, `public/css`, `public/ajax`). Sans cela, GLPI 11 renvoyait 404 sur
+  `dropzone.js`/`dropzone.css` (les fichiers statiques doivent être sous `public/`).
+- `parse.php` : suppression de `include('inc/includes.php')` — le routeur GLPI 11 initialise
+  automatiquement l'environnement et applique le pare-feu (authentifié par défaut).
+
 ## [0.3.2] - 2026-06-24
 
 ### Corrigé
