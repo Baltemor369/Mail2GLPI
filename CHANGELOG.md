@@ -5,6 +5,13 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.3.1] - 2026-06-23
+
+### Ajouté
+- `examples/sample.eml` : e-mail de test (sujet accentué encodé, multipart mixed/alternative
+  imbriqué, corps texte + HTML, pièce jointe base64) pour valider le parsing de la Brique A
+  sans dépendre d'un client mail.
+
 ## [0.3.0] - 2026-06-23
 
 ### Ajouté

@@ -1,0 +1,41 @@
+From: Jean Dupont <jean.dupont@example.com>
+To: support@example.com
+Cc: chef.support@example.com
+Subject: =?UTF-8?Q?Probl=C3=A8me_imprimante_2e_=C3=A9tage?=
+Date: Mon, 23 Jun 2026 09:15:00 +0200
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="MIXED"
+
+--MIXED
+Content-Type: multipart/alternative; boundary="ALT"
+
+--ALT
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+Bonjour,
+
+L'imprimante du 2e =C3=A9tage affiche une erreur "PC LOAD LETTER".
+Merci de cr=C3=A9er un ticket.
+
+Cordialement,
+Jean
+--ALT
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+<html><body>
+<p>Bonjour,</p>
+<p>L'imprimante du 2e =C3=A9tage affiche une erreur "PC LOAD LETTER".</p>
+<p>Merci de cr=C3=A9er un ticket.</p>
+<p>Cordialement,<br>Jean</p>
+</body></html>
+--ALT--
+--MIXED
+Content-Type: text/plain; charset="UTF-8"; name="note.txt"
+Content-Disposition: attachment; filename="note.txt"
+Content-Transfer-Encoding: base64
+
+Q2VjaSBlc3QgdW5lIHBpZWNlIGpvaW50ZSBkZSB0ZXN0IHBvdXIgTWFpbDJHTFBJLg==
+
+--MIXED--
