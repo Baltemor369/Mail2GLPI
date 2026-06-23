@@ -12,3 +12,4 @@ et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 - Cahier des Charges (`CDC.md`) : périmètre, exigences fonctionnelles/techniques, architecture,
   contraintes Outlook/navigateur, phasage (POC → MVP → V1 → V2), risques.
 - Initialisation du versioning (`VERSION`, `CHANGELOG.md`).
+- `README.md` présentant le projet, l'architecture en deux briques et la feuille de route.
