@@ -6,36 +6,54 @@
  * Au dépôt d'un fichier .eml : envoi à l'endpoint d'analyse du plugin, puis pré-remplissage
  * des champs du formulaire (titre, description). Le rattachement du demandeur par e-mail, des
  * observateurs et des pièces jointes reste à câbler (TODO, cf. README).
+ *
+ * On utilise la **délégation d'événements** au niveau du document (en phase de capture) :
+ * la dropzone fonctionne même si le formulaire GLPI 11 est rendu après le chargement de ce
+ * script, et on intercepte le drop avant l'uploader natif de GLPI.
  */
 (function () {
     "use strict";
 
-    // Le conteneur n'est présent que sur la fiche d'un nouveau ticket (rendu par setup.php).
-    function init() {
-        const dropzone = document.getElementById("mail2glpi-dropzone");
+    const DROPZONE_ID = "mail2glpi-dropzone";
+
+    document.addEventListener("dragover", onDragOver, true);
+    document.addEventListener("dragleave", onDragLeave, true);
+    document.addEventListener("drop", onDocumentDrop, true);
+
+    /** Retourne la dropzone si l'événement se produit à l'intérieur, sinon null. */
+    function closestDropzone(target) {
+        const element = target && target.nodeType === 1 ? target : target && target.parentElement;
+        return element ? element.closest("#" + DROPZONE_ID) : null;
+    }
+
+    function onDragOver(event) {
+        const dropzone = closestDropzone(event.target);
         if (!dropzone) {
             return;
         }
-        wireDropzone(dropzone);
+        event.preventDefault(); // requis pour autoriser le drop sur la zone
+        dropzone.classList.add("mail2glpi-dropzone--active");
     }
 
-    function wireDropzone(dropzone) {
-        ["dragenter", "dragover"].forEach((type) => {
-            dropzone.addEventListener(type, (event) => {
-                event.preventDefault();
-                dropzone.classList.add("mail2glpi-dropzone--active");
-            });
-        });
-        ["dragleave", "drop"].forEach((type) => {
-            dropzone.addEventListener(type, (event) => {
-                event.preventDefault();
-                dropzone.classList.remove("mail2glpi-dropzone--active");
-            });
-        });
-        dropzone.addEventListener("drop", (event) => onDrop(event, dropzone));
+    function onDragLeave(event) {
+        const dropzone = closestDropzone(event.target);
+        if (dropzone) {
+            dropzone.classList.remove("mail2glpi-dropzone--active");
+        }
     }
 
-    function onDrop(event, dropzone) {
+    function onDocumentDrop(event) {
+        const dropzone = closestDropzone(event.target);
+        if (!dropzone) {
+            return;
+        }
+        event.preventDefault();
+        event.stopPropagation(); // empêche l'uploader natif de GLPI d'intercepter ce drop
+        dropzone.classList.remove("mail2glpi-dropzone--active");
+        handleDroppedFile(event, dropzone);
+    }
+
+    function handleDroppedFile(event, dropzone) {
         const file = event.dataTransfer && event.dataTransfer.files[0];
         if (!file) {
             return;
@@ -147,11 +165,5 @@
         }
         status.textContent = message;
         status.className = "mail2glpi-dropzone__status" + (kind ? " mail2glpi-dropzone__status--" + kind : "");
-    }
-
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", init);
-    } else {
-        init();
     }
 })();

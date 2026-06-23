@@ -5,6 +5,13 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.3.2] - 2026-06-24
+
+### Corrigé
+- `dropzone.js` : passage en **délégation d'événements** (capture sur `document`). La dropzone
+  réagit désormais même lorsque le formulaire GLPI 11 est rendu après le chargement du script,
+  et le drop est intercepté avant l'uploader natif de GLPI (`stopPropagation`).
+
 ## [0.3.1] - 2026-06-23
 
 ### Ajouté
