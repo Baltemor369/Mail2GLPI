@@ -5,6 +5,15 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.3.6] - 2026-06-24
+
+### Corrigé
+- **403 « Jeton de sécurité invalide » au dépôt** : suppression de la validation CSRF manuelle
+  dans `parse.php`. En GLPI 11, le routeur valide déjà le CSRF des requêtes AJAX via l'en-tête
+  `X-Glpi-Csrf-Token` (envoyé par `dropzone.js`) **et consomme le jeton** ; la re-validation par
+  `Session::validateCSRF` testait alors un jeton déjà absent → 403 systématique. L'endpoint
+  reste protégé par le routeur (mécanisme CSRF officiel de GLPI 11).
+
 ## [0.3.5] - 2026-06-24
 
 ### Corrigé
