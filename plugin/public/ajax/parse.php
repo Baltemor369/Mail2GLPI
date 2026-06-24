@@ -44,7 +44,9 @@ try {
     $csrf_token = $_POST['_glpi_csrf_token']
         ?? $_SERVER['HTTP_X_GLPI_CSRF_TOKEN']
         ?? '';
-    if (!Session::validateCSRF(['_glpi_csrf_token' => $csrf_token])) {
+    // preserve_token=true : le jeton AJAX de GLPI 11 est réutilisable, on ne le consomme pas
+    // (sinon un second dépôt dans la même page échouerait).
+    if (!Session::validateCSRF(['_glpi_csrf_token' => $csrf_token], true)) {
         mail2glpi_fail(403, __('Jeton de sécurité invalide. Rechargez la page et réessayez.', 'mail2glpi'));
     }
 

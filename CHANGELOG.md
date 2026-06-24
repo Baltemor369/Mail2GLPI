@@ -5,6 +5,13 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.3.5] - 2026-06-24
+
+### Corrigé
+- `parse.php` : `Session::validateCSRF(..., true)` (`preserve_token`) pour ne pas consommer le
+  jeton AJAX réutilisable de GLPI 11 — sinon un second dépôt de `.eml` dans la même page
+  échouait. Issu de l'audit sécurité du correctif CSRF (finding robustesse).
+
 ## [0.3.4] - 2026-06-24
 
 ### Corrigé
