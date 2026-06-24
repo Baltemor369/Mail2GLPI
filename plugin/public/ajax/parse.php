@@ -72,6 +72,12 @@ try {
     $parsed = (new MailParser())->parse($raw);
     $mapped = (new TicketMapper())->map($parsed);
 
+    // Source de la demande = « E-Mail » (même source que celle utilisée par le collecteur).
+    $source_id = (int) RequestType::getDefault('mail');
+    if ($source_id > 0) {
+        $mapped['source_id'] = $source_id;
+    }
+
     echo json_encode(['data' => $mapped]);
 } catch (\Throwable $e) {
     // On journalise le détail technique mais on ne le renvoie pas au client.

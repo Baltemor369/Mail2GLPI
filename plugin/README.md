@@ -57,10 +57,19 @@ plugin/
   brut non fiable injecté) afin de réduire la surface XSS. La préservation du HTML riche, avec
   assainissement complet, est repoussée à la V1.
 
+## Pièces jointes & source
+
+- Les **pièces jointes** de l'e-mail sont ajoutées à l'uploader du formulaire via la fonction
+  GLPI `uploadFile()` (champs cachés `_filename[]` rattachés à la soumission). Plafonds :
+  **5 Mo par pièce** et **10 Mo cumulés** ; au-delà, la pièce est ignorée (signalée à l'agent).
+  Le contrôle des **types de fichiers** autorisés reste assuré par la politique de documents de
+  GLPI à l'upload — ne pas la désactiver.
+- La **source de la demande** est positionnée automatiquement sur « E-Mail »
+  (`RequestType::getDefault('mail')`), comme le collecteur de mails natif.
+
 ## Reste à faire (V1 & V2)
 
 - [ ] Rattacher le demandeur par e-mail et les observateurs (widgets « acteurs » GLPI).
-- [ ] Téléverser les pièces jointes du mail sur le ticket.
 - [ ] Affecter entité / catégorie / urgence / SLA par **règles** (V2).
 - [ ] Fournir les catalogues de traduction (`locales/`).
 - [ ] Support du format `.msg` (Outlook) derrière la même interface de parsing.

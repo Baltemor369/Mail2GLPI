@@ -5,6 +5,22 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.4.0] - 2026-06-24
+
+### Ajouté
+- **Source de la demande = « E-Mail »** : pré-positionnée automatiquement à partir de
+  `RequestType::getDefault('mail')` (comme le collecteur natif).
+- **Pièces jointes** : le contenu des PJ de l'e-mail est extrait (base64) puis ajouté à
+  l'uploader du formulaire via la fonction GLPI `uploadFile()` (rattachement à la soumission).
+  Plafonds : 5 Mo par pièce, 10 Mo cumulés ; au-delà la pièce est ignorée et signalée à l'agent.
+
+### Sécurité / robustesse (findings du pipeline qualité)
+- Borne HAUTE sûre de la taille décodée (corrige une sous-estimation en quoted-printable qui
+  contournait le plafond) ; décodage strict (un base64 invalide est ignoré, pas envoyé corrompu).
+- Budget cumulé sur le poids des PJ renvoyées (anti-amplification mémoire/réponse).
+- Compteur d'aperçu distinguant les PJ **ignorées** (trop volumineuses) des **échecs** d'ajout ;
+  trace `console.warn` en cas d'échec d'ajout.
+
 ## [0.3.6] - 2026-06-24
 
 ### Corrigé

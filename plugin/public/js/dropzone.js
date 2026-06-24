@@ -1,4 +1,4 @@
-/* global CFG_GLPI, tinymce, getAjaxCsrfToken */
+/* global CFG_GLPI, tinymce, getAjaxCsrfToken, uploadFile */
 
 /**
  * Mail2GLPI — comportement de la dropzone injectée dans le formulaire de création de ticket.
@@ -98,10 +98,14 @@
         setFieldValue('[name="name"]', data.title);
         setDescription(data.content);
 
+        if (data.source_id) {
+            setDropdown('[name="requesttypes_id"]', data.source_id, "E-Mail");
+        }
+        const attachedCount = attachFiles(data.attachments || []);
+
         // TODO : rattacher le demandeur (data.requester_email) et les observateurs
-        // (data.observers) via les widgets acteurs de GLPI, et téléverser data.attachments.
-        const summary = buildSummary(data);
-        setStatus(dropzone, "Ticket pré-rempli. " + summary, "success");
+        // (data.observers) via les widgets acteurs de GLPI.
+        setStatus(dropzone, "Ticket pré-rempli. " + buildSummary(data, attachedCount), "success");
     }
 
     /* ----------------------------------------------------------------- */
@@ -114,6 +118,61 @@
             field.value = value;
             field.dispatchEvent(new Event("change", { bubbles: true }));
         }
+    }
+
+    function setDropdown(selector, value, fallbackLabel) {
+        const select = document.querySelector(selector);
+        if (!select) {
+            return;
+        }
+        const strValue = String(value);
+        const exists = Array.prototype.some.call(select.options, (o) => o.value === strValue);
+        if (!exists) {
+            // L'option n'est pas (encore) chargée dans le select2 : on l'ajoute.
+            select.add(new Option(fallbackLabel || strValue, strValue, true, true));
+        }
+        select.value = strValue;
+        // GLPI rend ce champ en select2 (jQuery) ; le trigger rafraîchit l'affichage.
+        if (window.jQuery) {
+            window.jQuery(select).trigger("change");
+        } else {
+            select.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+    }
+
+    function attachFiles(attachments) {
+        // uploadFile() est la fonction GLPI qui ajoute un fichier à l'uploader du formulaire
+        // (et crée les champs cachés _filename[] pour le rattachement à la soumission).
+        if (typeof uploadFile !== "function") {
+            return 0;
+        }
+        let count = 0;
+        attachments.forEach((attachment) => {
+            if (!attachment.content_base64) {
+                return;
+            }
+            try {
+                uploadFile(base64ToFile(attachment.content_base64, attachment.name, attachment.type));
+                count++;
+            } catch (e) {
+                // best-effort : on n'interrompt pas, mais on trace pour le diagnostic.
+                if (window.console) {
+                    console.warn("mail2glpi : échec d'ajout de la pièce jointe", attachment.name, e);
+                }
+            }
+        });
+        return count;
+    }
+
+    function base64ToFile(base64, name, type) {
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        return new File([bytes], name || "piece-jointe", {
+            type: type || "application/octet-stream",
+        });
     }
 
     function setDescription(html) {
@@ -139,14 +198,30 @@
         return tinymce.activeEditor || null;
     }
 
-    function buildSummary(data) {
+    function buildSummary(data, attachedCount) {
         const parts = [];
         if (data.requester_email) {
             parts.push("Demandeur : " + data.requester_email);
         }
-        const attachmentCount = (data.attachments || []).length;
-        if (attachmentCount > 0) {
-            parts.push(attachmentCount + " pièce(s) jointe(s) à rattacher manuellement");
+
+        const attachments = data.attachments || [];
+        // « éligibles » = PJ dont le contenu a été renvoyé ; les autres sont ignorées (trop
+        // volumineuses ou indécodables) côté serveur — à distinguer d'un échec d'ajout.
+        const eligible = attachments.filter((a) => a.content_base64).length;
+        const skipped = attachments.length - eligible;
+
+        if (attachments.length > 0) {
+            if (eligible === 0) {
+                parts.push(skipped + " pièce(s) jointe(s) ignorée(s) (trop volumineuse(s))");
+            } else {
+                let msg = attachedCount >= eligible
+                    ? eligible + " pièce(s) jointe(s) ajoutée(s)"
+                    : attachedCount + "/" + eligible + " pièce(s) jointe(s) ajoutée(s)";
+                if (skipped > 0) {
+                    msg += " · " + skipped + " ignorée(s)";
+                }
+                parts.push(msg);
+            }
         }
         return parts.join(" · ");
     }
