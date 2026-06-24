@@ -35,6 +35,3 @@ Thumbs.db
 /examples/*.msg
 /examples/*.eml
 !/examples/sample.eml
-
-# Bibliothèques .msg tierces récupérées localement (cf. vendor/README.md)
-/plugin/public/js/vendor/*.js

@@ -5,6 +5,13 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.5.2] - 2026-06-24
+
+### Modifié
+- La bibliothèque `.msg` (`DataStream.js`, `msg.reader.js`, Apache-2.0) est désormais
+  **vendorisée (committée)** dans `plugin/public/js/vendor/`, avec sa `LICENSE`. Le déploiement
+  « copier le dossier » fonctionne tel quel, hors-ligne, sans téléchargement séparé.
+
 ## [0.5.1] - 2026-06-24
 
 ### Corrigé

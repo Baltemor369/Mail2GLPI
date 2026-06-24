@@ -10,11 +10,12 @@ Deux fichiers (navigateur, sans build) sont attendus **ici** :
 | `DataStream.js`    | Lecture binaire bas niveau (dépendance)         |
 | `msg.reader.js`    | Parseur `.msg` → `MSGReader` (objet global)     |
 
-> ⚠️ Ces fichiers ne sont **pas** committés par défaut (choix de chaîne d'approvisionnement :
-> c'est à vous de décider d'introduire ce code tiers). Tant qu'ils sont absents, le `.eml`
-> continue de fonctionner ; seul le `.msg` affichera « Lecteur .msg indisponible ».
+Ces fichiers sont **vendorisés (committés)** dans le dépôt, avec leur licence Apache-2.0
+(`LICENSE`). Le déploiement « copier le dossier » fonctionne donc tel quel, y compris hors-ligne.
 
-## Récupérer les fichiers
+## Mettre à jour les fichiers
+
+Source : <https://github.com/ykarpovich/msg.reader>. Pour rafraîchir la bibliothèque :
 
 ```bash
 cd <ce_dossier_vendor>
@@ -22,8 +23,7 @@ curl -L -o DataStream.js  https://cdn.jsdelivr.net/gh/ykarpovich/msg.reader@mast
 curl -L -o msg.reader.js  https://cdn.jsdelivr.net/gh/ykarpovich/msg.reader@master/msg.reader.js
 ```
 
-(Pour un déploiement reproductible, épinglez un commit précis plutôt que `@master`, et/ou
-committez ces fichiers dans votre dépôt.)
+(Pour un déploiement reproductible, préférez épingler un commit précis plutôt que `@master`.)
 
 ## Limitations connues
 

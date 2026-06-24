@@ -7,7 +7,7 @@
  * convertir un fichier e-mail (.eml) glissé en pré-remplissage du formulaire.
  */
 
-define('PLUGIN_MAIL2GLPI_VERSION', '0.5.1');
+define('PLUGIN_MAIL2GLPI_VERSION', '0.5.2');
 define('PLUGIN_MAIL2GLPI_MIN_GLPI_VERSION', '11.0.0');
 define('PLUGIN_MAIL2GLPI_MAX_GLPI_VERSION', '11.1.99');
 
