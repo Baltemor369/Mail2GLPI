@@ -1,4 +1,4 @@
-/* global CFG_GLPI, tinymce */
+/* global CFG_GLPI, tinymce, getAjaxCsrfToken */
 
 /**
  * Mail2GLPI — comportement de la dropzone injectée dans le formulaire de création de ticket.
@@ -68,17 +68,24 @@
     function parseAndFill(file, dropzone) {
         setStatus(dropzone, "Analyse de l'e-mail en cours…");
 
+        const csrfToken = readCsrfToken();
         const formData = new FormData();
         formData.append("emlfile", file);
-        formData.append("_glpi_csrf_token", readCsrfToken());
+        formData.append("_glpi_csrf_token", csrfToken);
 
         fetch(buildEndpoint(), {
             method: "POST",
             body: formData,
             credentials: "same-origin",
+            headers: {
+                // GLPI 11 valide le CSRF des requêtes AJAX via cet en-tête.
+                "X-Requested-With": "XMLHttpRequest",
+                "X-Glpi-Csrf-Token": csrfToken,
+            },
         })
-            .then((response) => response.json().then((json) => ({ ok: response.ok, json })))
-            .then(({ ok, json }) => {
+            .then((response) => response.text().then((text) => ({ ok: response.ok, text })))
+            .then(({ ok, text }) => {
+                const json = parseJsonOrThrow(text);
                 if (!ok || json.error) {
                     throw new Error(json.error || "Échec de l'analyse.");
                 }
@@ -154,8 +161,21 @@
     }
 
     function readCsrfToken() {
+        // GLPI fournit un jeton CSRF réutilisable pour l'AJAX ; on l'utilise en priorité.
+        if (typeof getAjaxCsrfToken === "function") {
+            return getAjaxCsrfToken();
+        }
         const input = document.querySelector('input[name="_glpi_csrf_token"]');
         return input ? input.value : "";
+    }
+
+    function parseJsonOrThrow(text) {
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            // Réponse non-JSON (page d'erreur HTML, session expirée…) : message lisible.
+            throw new Error("Réponse inattendue du serveur (session expirée ?). Rechargez la page.");
+        }
     }
 
     function setStatus(dropzone, message, kind) {

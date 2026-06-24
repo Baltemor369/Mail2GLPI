@@ -37,7 +37,17 @@ function mail2glpi_fail(int $status, string $message)
 try {
     // Sécurité : utilisateur authentifié + droit de créer des tickets + jeton CSRF valide.
     Session::checkLoginUser();
-    Session::checkCSRF($_REQUEST);
+
+    // GLPI 11 (AJAX) : le jeton CSRF est transmis dans l'en-tête X-Glpi-Csrf-Token ; on accepte
+    // aussi le champ de formulaire en repli. On valide nous-mêmes pour renvoyer du JSON (et non
+    // une page d'erreur HTML) en cas d'échec.
+    $csrf_token = $_POST['_glpi_csrf_token']
+        ?? $_SERVER['HTTP_X_GLPI_CSRF_TOKEN']
+        ?? '';
+    if (!Session::validateCSRF(['_glpi_csrf_token' => $csrf_token])) {
+        mail2glpi_fail(403, __('Jeton de sécurité invalide. Rechargez la page et réessayez.', 'mail2glpi'));
+    }
+
     if (!Session::haveRight('ticket', CREATE)) {
         mail2glpi_fail(403, __('Droit de création de ticket requis.', 'mail2glpi'));
     }

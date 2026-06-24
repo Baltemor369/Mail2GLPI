@@ -5,6 +5,17 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.3.4] - 2026-06-24
+
+### Corrigé
+- **CSRF AJAX GLPI 11** : le jeton est désormais transmis via l'en-tête `X-Glpi-Csrf-Token`
+  (jeton réutilisable `getAjaxCsrfToken()`), avec `X-Requested-With: XMLHttpRequest`. Côté
+  serveur, `parse.php` valide via `Session::validateCSRF` (lit l'en-tête ou le champ de repli)
+  et renvoie une erreur **JSON** au lieu d'une page HTML. Corrige l'erreur
+  « Unexpected token '<' … is not valid JSON » au dépôt d'un fichier.
+- `dropzone.js` : lecture de la réponse en texte puis parsing tolérant (message lisible si la
+  réponse n'est pas du JSON, ex. session expirée).
+
 ## [0.3.3] - 2026-06-24
 
 ### Corrigé
