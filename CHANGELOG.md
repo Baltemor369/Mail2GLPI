@@ -5,6 +5,13 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.4.1] - 2026-06-24
+
+### Corrigé
+- Synchronisation de la constante `PLUGIN_MAIL2GLPI_VERSION` (`setup.php`) avec la version du
+  projet : elle était restée figée à `0.3.0` depuis l'init, ce qui rendait le numéro de version
+  affiché par GLPI trompeur (sans impact fonctionnel). Désormais alignée sur `VERSION`.
+
 ## [0.4.0] - 2026-06-24
 
 ### Ajouté
