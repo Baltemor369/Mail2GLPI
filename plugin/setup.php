@@ -7,7 +7,7 @@
  * convertir un fichier e-mail (.eml) glissé en pré-remplissage du formulaire.
  */
 
-define('PLUGIN_MAIL2GLPI_VERSION', '0.4.2');
+define('PLUGIN_MAIL2GLPI_VERSION', '0.5.0');
 define('PLUGIN_MAIL2GLPI_MIN_GLPI_VERSION', '11.0.0');
 define('PLUGIN_MAIL2GLPI_MAX_GLPI_VERSION', '11.1.99');
 
@@ -25,8 +25,13 @@ function plugin_init_mail2glpi()
     $PLUGIN_HOOKS['csrf_compliant']['mail2glpi'] = true;
 
     // Assets front. Le script vérifie lui-même qu'on est sur un formulaire de ticket.
-    $PLUGIN_HOOKS['add_javascript']['mail2glpi'] = ['js/dropzone.js'];
-    $PLUGIN_HOOKS['add_css']['mail2glpi']        = ['css/dropzone.css'];
+    // Les libs vendor (lecture des .msg Outlook) doivent être chargées AVANT dropzone.js.
+    $PLUGIN_HOOKS['add_javascript']['mail2glpi'] = [
+        'js/vendor/DataStream.js',
+        'js/vendor/msg.reader.js',
+        'js/dropzone.js',
+    ];
+    $PLUGIN_HOOKS['add_css']['mail2glpi'] = ['css/dropzone.css'];
 
     // Ancre la dropzone dans la fiche d'un objet ITIL (ticket) — GLPI 11.
     $PLUGIN_HOOKS['post_itil_info_section']['mail2glpi'] = 'plugin_mail2glpi_itil_section';
@@ -110,7 +115,7 @@ function plugin_mail2glpi_itil_section(array $params)
         <section class="mail2glpi-section">
             <div id="mail2glpi-dropzone" class="mail2glpi-dropzone" tabindex="0">
                 <span class="mail2glpi-dropzone__label">
-                    Glissez ici un e-mail (.eml) pour pré-remplir le ticket
+                    Glissez ici un e-mail (.eml ou .msg) pour pré-remplir le ticket
                 </span>
                 <p class="mail2glpi-dropzone__status" role="status" aria-live="polite"></p>
             </div>

@@ -5,6 +5,26 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.5.0] - 2026-06-24
+
+### Ajouté
+- **Prise en charge des fichiers `.msg` (Outlook classic)** : le `.msg` est lu **côté
+  navigateur** par la bibliothèque `msg.reader` (Apache-2.0, à récupérer dans
+  `public/js/vendor/` — cf. son README). Ses champs (sujet, corps, expéditeur) sont envoyés au
+  serveur pour le mapping/source (mêmes règles que le `.eml`), et ses pièces jointes sont
+  rattachées directement côté client. La dropzone accepte désormais `.eml` **ou** `.msg`.
+- `parse.php` : nouveau mode `msg` (mapping de champs pré-extraits), en plus du mode `.eml`.
+
+### Sécurité / robustesse (findings du pipeline qualité)
+- Borne de taille sur les champs du mode `msg` + validation stricte du paramètre `mode`.
+- Garde sur le contenu des pièces jointes `.msg` (pas de fichier 0 octet), garde
+  `file.arrayBuffer` (navigateurs anciens), et statut d'avertissement si les pièces jointes
+  ne peuvent pas être ajoutées (éditeur non prêt) au lieu d'un faux « succès ».
+
+### Note
+- La bibliothèque tierce `.msg` n'est volontairement pas committée : à récupérer une fois
+  (cf. `plugin/public/js/vendor/README.md`). Sans elle, le `.eml` fonctionne normalement.
+
 ## [0.4.2] - 2026-06-24
 
 ### Corrigé

@@ -1,11 +1,13 @@
-/* global CFG_GLPI, tinymce, getAjaxCsrfToken, uploadFile */
+/* global CFG_GLPI, tinymce, getAjaxCsrfToken, uploadFile, MSGReader */
 
 /**
  * Mail2GLPI — comportement de la dropzone injectée dans le formulaire de création de ticket.
  *
- * Au dépôt d'un fichier .eml : envoi à l'endpoint d'analyse du plugin, puis pré-remplissage
- * des champs du formulaire (titre, description). Le rattachement du demandeur par e-mail, des
- * observateurs et des pièces jointes reste à câbler (TODO, cf. README).
+ * Au dépôt d'un fichier :
+ *  - .eml → envoyé au serveur pour analyse (MailParser) ;
+ *  - .msg (Outlook) → lu dans le navigateur (lib msg.reader), puis ses champs sont envoyés au
+ *    serveur pour le mapping/source ; ses pièces jointes sont rattachées directement côté client.
+ * Dans les deux cas, le formulaire est ensuite pré-rempli (titre, description, source, PJ).
  *
  * On utilise la **délégation d'événements** au niveau du document (en phase de capture) :
  * la dropzone fonctionne même si le formulaire GLPI 11 est rendu après le chargement de ce
@@ -58,19 +60,69 @@
         if (!file) {
             return;
         }
-        if (!/\.eml$/i.test(file.name)) {
-            setStatus(dropzone, "Format non pris en charge : déposez un fichier .eml.", "error");
-            return;
+        if (/\.eml$/i.test(file.name)) {
+            parseEmlAndFill(file, dropzone);
+        } else if (/\.msg$/i.test(file.name)) {
+            parseMsgAndFill(file, dropzone);
+        } else {
+            setStatus(dropzone, "Format non pris en charge : déposez un fichier .eml ou .msg.", "error");
         }
-        parseAndFill(file, dropzone);
     }
 
-    function parseAndFill(file, dropzone) {
+    /** .eml : le serveur analyse le fichier et renvoie le mapping (PJ incluses en base64). */
+    function parseEmlAndFill(file, dropzone) {
         setStatus(dropzone, "Analyse de l'e-mail en cours…");
-
-        const csrfToken = readCsrfToken();
         const formData = new FormData();
         formData.append("emlfile", file);
+        sendToServer(formData, dropzone, (data) => {
+            fillForm(data, dropzone, bundleFromServerAttachments(data.attachments || []));
+        });
+    }
+
+    /** .msg : lu dans le navigateur ; ses champs vont au serveur, ses PJ restent côté client. */
+    function parseMsgAndFill(file, dropzone) {
+        if (typeof MSGReader !== "function") {
+            setStatus(dropzone, "Lecteur .msg indisponible (bibliothèque non chargée).", "error");
+            return;
+        }
+        if (typeof file.arrayBuffer !== "function") {
+            setStatus(dropzone, "Navigateur trop ancien pour lire les fichiers .msg.", "error");
+            return;
+        }
+        setStatus(dropzone, "Lecture du message Outlook…");
+
+        file.arrayBuffer()
+            .then((buffer) => {
+                let reader;
+                let fileData;
+                try {
+                    reader = new MSGReader(buffer);
+                    fileData = reader.getFileData();
+                } catch (e) {
+                    throw new Error("Fichier .msg illisible.");
+                }
+                if (!fileData || fileData.error) {
+                    throw new Error("Fichier .msg illisible.");
+                }
+
+                const formData = new FormData();
+                formData.append("mode", "msg");
+                formData.append("subject", fileData.subject || "");
+                formData.append("from_email", fileData.senderEmail || "");
+                formData.append("from_name", fileData.senderName || "");
+                formData.append("body_text", fileData.body || "");
+                formData.append("body_html", fileData.bodyHTML || "");
+
+                sendToServer(formData, dropzone, (data) => {
+                    fillForm(data, dropzone, bundleFromMsgAttachments(reader, fileData.attachments || []));
+                });
+            })
+            .catch((error) => setStatus(dropzone, "Erreur : " + error.message, "error"));
+    }
+
+    /** Envoi commun vers l'endpoint d'analyse (gère le CSRF AJAX et les erreurs JSON/HTML). */
+    function sendToServer(formData, dropzone, onData) {
+        const csrfToken = readCsrfToken();
         formData.append("_glpi_csrf_token", csrfToken);
 
         fetch(buildEndpoint(), {
@@ -89,23 +141,29 @@
                 if (!ok || json.error) {
                     throw new Error(json.error || "Échec de l'analyse.");
                 }
-                fillForm(json.data, dropzone);
+                onData(json.data);
             })
             .catch((error) => setStatus(dropzone, "Erreur : " + error.message, "error"));
     }
 
-    function fillForm(data, dropzone) {
+    function fillForm(data, dropzone, bundle) {
         setFieldValue('[name="name"]', data.title);
         setDescription(data.content);
 
         if (data.source_id) {
             setDropdown('[name="requesttypes_id"]', data.source_id, "E-Mail");
         }
-        const attachedCount = attachFiles(data.attachments || []);
+        const attached = attachFileObjects(bundle.files);
 
         // TODO : rattacher le demandeur (data.requester_email) et les observateurs
         // (data.observers) via les widgets acteurs de GLPI.
-        setStatus(dropzone, "Ticket pré-rempli. " + buildSummary(data, attachedCount), "success");
+        const summary = buildSummary(data, bundle, attached);
+        if (bundle.eligible > 0 && attached === 0) {
+            // Champs remplis mais aucune PJ ajoutée (éditeur non prêt / uploader indisponible).
+            setStatus(dropzone, "Ticket pré-rempli (pièces jointes à ajouter manuellement). " + summary, "error");
+        } else {
+            setStatus(dropzone, "Ticket pré-rempli. " + summary, "success");
+        }
     }
 
     /* ----------------------------------------------------------------- */
@@ -140,31 +198,71 @@
         }
     }
 
-    function attachFiles(attachments) {
-        // uploadFile(file, editor) est la fonction GLPI qui ajoute un fichier à l'uploader du
-        // formulaire (et crée les champs cachés _filename[] pour le rattachement à la soumission).
-        // L'éditeur TinyMCE est REQUIS : uploadFile() appelle editor.getElement() pour retrouver
-        // l'uploader associé (via data-uploader-name).
+    /**
+     * Ajoute des objets File à l'uploader du formulaire via uploadFile(file, editor) de GLPI.
+     * L'éditeur TinyMCE est REQUIS : uploadFile() appelle editor.getElement() pour retrouver
+     * l'uploader associé (via data-uploader-name) et crée les champs cachés _filename[].
+     */
+    function attachFileObjects(files) {
         const editor = findContentEditor();
         if (typeof uploadFile !== "function" || !editor) {
             return 0;
         }
         let count = 0;
-        attachments.forEach((attachment) => {
-            if (!attachment.content_base64) {
-                return;
-            }
+        files.forEach((file) => {
             try {
-                uploadFile(base64ToFile(attachment.content_base64, attachment.name, attachment.type), editor);
+                uploadFile(file, editor);
                 count++;
             } catch (e) {
                 // best-effort : on n'interrompt pas, mais on trace pour le diagnostic.
                 if (window.console) {
-                    console.warn("mail2glpi : échec d'ajout de la pièce jointe", attachment.name, e);
+                    console.warn("mail2glpi : échec d'ajout de la pièce jointe", file && file.name, e);
                 }
             }
         });
         return count;
+    }
+
+    /** Construit la liste de File à partir des PJ renvoyées par le serveur (.eml, base64). */
+    function bundleFromServerAttachments(attachments) {
+        const files = [];
+        let skipped = 0;
+        attachments.forEach((attachment) => {
+            if (attachment.content_base64) {
+                try {
+                    files.push(base64ToFile(attachment.content_base64, attachment.name, attachment.type));
+                } catch (e) {
+                    skipped++;
+                }
+            } else {
+                // Ignorée côté serveur (trop volumineuse / indécodable).
+                skipped++;
+            }
+        });
+        return { files: files, eligible: files.length, skipped: skipped };
+    }
+
+    /** Construit la liste de File à partir des PJ lues dans le .msg (binaire côté navigateur). */
+    function bundleFromMsgAttachments(reader, attachments) {
+        const files = [];
+        let skipped = 0;
+        attachments.forEach((attachment) => {
+            try {
+                const extracted = reader.getAttachment(attachment); // { fileName, content: Uint8Array }
+                if (!extracted || !extracted.content || !extracted.content.length) {
+                    skipped++; // contenu vide/indisponible : on ne crée pas de fichier 0 octet
+                    return;
+                }
+                const name = extracted.fileName || attachment.fileName || "piece-jointe";
+                files.push(new File([extracted.content], name, { type: "application/octet-stream" }));
+            } catch (e) {
+                skipped++;
+                if (window.console) {
+                    console.warn("mail2glpi : pièce jointe .msg illisible", attachment && attachment.fileName, e);
+                }
+            }
+        });
+        return { files: files, eligible: files.length, skipped: skipped };
     }
 
     function base64ToFile(base64, name, type) {
@@ -201,27 +299,22 @@
         return tinymce.activeEditor || null;
     }
 
-    function buildSummary(data, attachedCount) {
+    function buildSummary(data, bundle, attached) {
         const parts = [];
         if (data.requester_email) {
             parts.push("Demandeur : " + data.requester_email);
         }
 
-        const attachments = data.attachments || [];
-        // « éligibles » = PJ dont le contenu a été renvoyé ; les autres sont ignorées (trop
-        // volumineuses ou indécodables) côté serveur — à distinguer d'un échec d'ajout.
-        const eligible = attachments.filter((a) => a.content_base64).length;
-        const skipped = attachments.length - eligible;
-
-        if (attachments.length > 0) {
-            if (eligible === 0) {
-                parts.push(skipped + " pièce(s) jointe(s) ignorée(s) (trop volumineuse(s))");
+        const total = bundle.eligible + bundle.skipped;
+        if (total > 0) {
+            if (bundle.eligible === 0) {
+                parts.push(bundle.skipped + " pièce(s) jointe(s) ignorée(s)");
             } else {
-                let msg = attachedCount >= eligible
-                    ? eligible + " pièce(s) jointe(s) ajoutée(s)"
-                    : attachedCount + "/" + eligible + " pièce(s) jointe(s) ajoutée(s)";
-                if (skipped > 0) {
-                    msg += " · " + skipped + " ignorée(s)";
+                let msg = attached >= bundle.eligible
+                    ? bundle.eligible + " pièce(s) jointe(s) ajoutée(s)"
+                    : attached + "/" + bundle.eligible + " pièce(s) jointe(s) ajoutée(s)";
+                if (bundle.skipped > 0) {
+                    msg += " · " + bundle.skipped + " ignorée(s)";
                 }
                 parts.push(msg);
             }

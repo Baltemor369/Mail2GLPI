@@ -9,11 +9,16 @@ le formulaire (titre, description), l'agent n'ayant plus qu'à valider.
 > e-mail**, des **observateurs** et l'**upload des pièces jointes** sont laissés en `TODO`
 > (à finaliser avec une instance GLPI 11 de test).
 
-## Pourquoi `.eml` et pas le drag direct depuis Outlook ?
+## Formats pris en charge : `.eml` et `.msg`
+
+- **`.eml`** (RFC 822) → analysé **côté serveur** (laminas/laminas-mail, fourni par GLPI).
+- **`.msg`** (Outlook classic) → lu **côté navigateur** par la bibliothèque `msg.reader`
+  (cf. `public/js/vendor/README.md` — à récupérer une fois, licence Apache-2.0). Ses champs sont
+  envoyés au serveur pour le mapping/source ; ses pièces jointes sont rattachées côté client.
 
 Le drag direct d'un mail depuis Outlook vers une page web n'est pas fiable (voir le CDC à la
-racine). Le dépôt d'un **fichier `.eml`** fonctionne dans tous les navigateurs. Pour le nouveau
-Outlook / OWA, c'est la **Brique B (add-in Outlook)** qui prend le relais.
+racine) ; le dépôt d'un **fichier** (`.eml`/`.msg`) fonctionne dans tous les navigateurs. Pour le
+nouveau Outlook / OWA, c'est la **Brique B (add-in Outlook)** qui prend le relais.
 
 ## Clé du plugin & déploiement
 
@@ -72,4 +77,3 @@ plugin/
 - [ ] Rattacher le demandeur par e-mail et les observateurs (widgets « acteurs » GLPI).
 - [ ] Affecter entité / catégorie / urgence / SLA par **règles** (V2).
 - [ ] Fournir les catalogues de traduction (`locales/`).
-- [ ] Support du format `.msg` (Outlook) derrière la même interface de parsing.
