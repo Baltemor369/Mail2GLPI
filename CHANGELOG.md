@@ -5,6 +5,14 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.4.2] - 2026-06-24
+
+### Corrigé
+- **Rattachement des pièces jointes** : `uploadFile()` (GLPI 11) exige l'éditeur TinyMCE en 2ᵉ
+  argument (il appelle `editor.getElement()` pour retrouver l'uploader). On lui passe désormais
+  l'éditeur de la description. Corrige l'erreur `Cannot read properties of undefined (reading
+  'getElement')` qui empêchait l'import du fichier.
+
 ## [0.4.1] - 2026-06-24
 
 ### Corrigé

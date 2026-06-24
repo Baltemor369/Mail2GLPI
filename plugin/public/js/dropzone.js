@@ -141,9 +141,12 @@
     }
 
     function attachFiles(attachments) {
-        // uploadFile() est la fonction GLPI qui ajoute un fichier à l'uploader du formulaire
-        // (et crée les champs cachés _filename[] pour le rattachement à la soumission).
-        if (typeof uploadFile !== "function") {
+        // uploadFile(file, editor) est la fonction GLPI qui ajoute un fichier à l'uploader du
+        // formulaire (et crée les champs cachés _filename[] pour le rattachement à la soumission).
+        // L'éditeur TinyMCE est REQUIS : uploadFile() appelle editor.getElement() pour retrouver
+        // l'uploader associé (via data-uploader-name).
+        const editor = findContentEditor();
+        if (typeof uploadFile !== "function" || !editor) {
             return 0;
         }
         let count = 0;
@@ -152,7 +155,7 @@
                 return;
             }
             try {
-                uploadFile(base64ToFile(attachment.content_base64, attachment.name, attachment.type));
+                uploadFile(base64ToFile(attachment.content_base64, attachment.name, attachment.type), editor);
                 count++;
             } catch (e) {
                 // best-effort : on n'interrompt pas, mais on trace pour le diagnostic.
