@@ -96,8 +96,12 @@ class MailParser
         $disposition = strtolower($this->headerValue($part, 'content-disposition', ''));
         $filename    = $this->extractFilename($part);
 
+        // Les images "inline" (signature, logos) sont marquées "inline" et référencées dans le
+        // corps via un Content-ID : on ne les rattache pas comme pièces jointes du ticket.
+        $isInline = str_contains($disposition, 'inline') && $part->getHeaders()->has('content-id');
+
         // Une partie est une pièce jointe si elle est marquée "attachment" ou possède un nom.
-        if (str_contains($disposition, 'attachment') || $filename !== '') {
+        if (!$isInline && (str_contains($disposition, 'attachment') || $filename !== '')) {
             $attachments[] = $this->buildAttachment($part, $filename, $contentType);
             return;
         }

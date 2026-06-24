@@ -247,6 +247,11 @@
         const files = [];
         let skipped = 0;
         attachments.forEach((attachment) => {
+            // Les images "inline" (signature, logos) portent un Content-ID : elles sont
+            // référencées dans le corps du mail et ne sont pas de vraies pièces jointes.
+            if (attachment.pidContentId) {
+                return;
+            }
             try {
                 const extracted = reader.getAttachment(attachment); // { fileName, content: Uint8Array }
                 if (!extracted || !extracted.content || !extracted.content.length) {

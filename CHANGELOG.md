@@ -5,6 +5,14 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.5.1] - 2026-06-24
+
+### Corrigé
+- **Images de signature rattachées par erreur** : les pièces jointes « inline » (logos/images
+  de signature, référencées dans le corps via un Content-ID) ne sont plus ajoutées au ticket.
+  Côté `.msg`, on ignore les PJ ayant un `pidContentId` ; côté `.eml`, celles marquées `inline`
+  avec un `Content-ID`. Corrige le cas où la signature parasitait l'ajout de la vraie pièce jointe.
+
 ## [0.5.0] - 2026-06-24
 
 ### Ajouté
