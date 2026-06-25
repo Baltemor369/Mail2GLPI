@@ -153,10 +153,12 @@
         if (data.source_id) {
             setDropdown('[name="requesttypes_id"]', data.source_id, "E-Mail");
         }
+        if (data.requester) {
+            setRequester(data.requester);
+        }
         const attached = attachFileObjects(bundle.files);
 
-        // TODO : rattacher le demandeur (data.requester_email) et les observateurs
-        // (data.observers) via les widgets acteurs de GLPI.
+        // TODO : rattacher les observateurs (Cc) via le widget acteurs (data-actor-type="observer").
         const summary = buildSummary(data, bundle, attached);
         if (bundle.eligible > 0 && attached === 0) {
             // Champs remplis mais aucune PJ ajoutée (éditeur non prêt / uploader indisponible).
@@ -203,6 +205,51 @@
      * L'éditeur TinyMCE est REQUIS : uploadFile() appelle editor.getElement() pour retrouver
      * l'uploader associé (via data-uploader-name) et crée les champs cachés _filename[].
      */
+    /**
+     * Positionne le demandeur du ticket dans le composant « Acteurs » de GLPI 11.
+     * - avec compte GLPI (items_id > 0) → acteur utilisateur ;
+     * - sans compte → acteur « par e-mail » (items_id 0 + alternative_email).
+     * On ajoute une option Select2 portant les données de l'acteur, puis on déclenche le
+     * flux natif de GLPI (select2:select → updateActors → écriture du champ caché _actors).
+     */
+    function setRequester(requester) {
+        if (!requester || !requester.email || !window.jQuery) {
+            return;
+        }
+        const select = document.querySelector('select[data-actor-type="requester"]');
+        if (!select) {
+            return;
+        }
+
+        const isUser = Number(requester.items_id) > 0;
+        const value = isUser ? String(requester.items_id) : requester.email;
+        const text = requester.name || requester.email;
+
+        // Évite un doublon si l'acteur est déjà présent.
+        if (Array.prototype.some.call(select.options, (o) => o.value === value)) {
+            return;
+        }
+
+        // Objet acteur au format attendu par updateActors() (lu via select2('data')).
+        const actorData = {
+            id: value,
+            text: text,
+            itemtype: "User",
+            items_id: isUser ? Number(requester.items_id) : 0,
+            use_notification: 1,
+            default_email: isUser ? requester.email : "",
+            alternative_email: isUser ? "" : requester.email,
+        };
+
+        const $select = window.jQuery(select);
+        const option = new Option(text, value, true, true);
+        // Select2 renvoie cet objet complet via select2('data') quand 'data' est attaché ainsi.
+        window.jQuery(option).data("data", actorData);
+        $select.append(option).trigger("change");
+        // Déclenche le gestionnaire natif (updateActors) pour synchroniser le champ _actors.
+        $select.trigger({ type: "select2:select", params: { data: actorData } });
+    }
+
     function attachFileObjects(files) {
         const editor = findContentEditor();
         if (typeof uploadFile !== "function" || !editor) {

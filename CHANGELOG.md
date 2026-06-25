@@ -5,6 +5,19 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.6.0] - 2026-06-25
+
+### Ajouté
+- **Demandeur = expéditeur du mail** : l'expéditeur est positionné comme demandeur du ticket.
+  - Côté serveur, l'e-mail est résolu en **compte GLPI** s'il existe (et actif/non supprimé) ;
+    sinon **demandeur par e-mail** (`items_id=0` + `alternative_email`), comme le collecteur natif.
+  - Côté client, le demandeur est injecté dans le composant « Acteurs » de GLPI 11
+    (Select2 `data-actor-type="requester"` → champ caché `_actors`).
+  - Vaut pour les deux formats (`.eml` et `.msg`).
+
+### Note
+- Les observateurs (Cc) ne sont pas encore rattachés — prochaine itération (même mécanisme).
+
 ## [0.5.2] - 2026-06-24
 
 ### Modifié

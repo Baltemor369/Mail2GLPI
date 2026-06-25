@@ -113,6 +113,38 @@ try {
         $mapped['source_id'] = $source_id;
     }
 
+    // Demandeur = expéditeur du mail. Si l'adresse correspond à un compte GLPI, on lie ce
+    // compte ; sinon, demandeur « par e-mail » (items_id = 0 + alternative_email), comme le
+    // collecteur de mails natif.
+    $sender_email = trim((string) ($parsed['from']['email'] ?? ''));
+    if ($sender_email !== '') {
+        $user_id   = 0;
+        $user_name = '';
+        try {
+            $user = new User();
+            if (
+                $user->getFromDBbyEmail($sender_email)
+                && (int) ($user->fields['is_deleted'] ?? 0) === 0
+                && (int) ($user->fields['is_active'] ?? 1) === 1
+            ) {
+                $user_id   = (int) $user->getID();
+                $user_name = $user->getFriendlyName() ?: $sender_email;
+            }
+        } catch (\Throwable $e) {
+            // Échec du lookup : on retombe proprement sur le demandeur par e-mail.
+            $user_id = 0;
+        }
+
+        $mapped['requester'] = [
+            'items_id'         => $user_id,
+            'name'             => $user_id > 0
+                ? $user_name
+                : ((string) ($parsed['from']['name'] ?? '') ?: $sender_email),
+            'email'            => $sender_email,
+            'use_notification' => 1,
+        ];
+    }
+
     echo json_encode(['data' => $mapped]);
 } catch (\Throwable $e) {
     // On journalise le détail technique mais on ne le renvoie pas au client.
