@@ -1,20 +1,22 @@
 # Mail2GLPI — Plugin GLPI (Brique A)
 
 Plugin GLPI 11 qui ajoute une **zone de dépôt** dans le formulaire de création de ticket :
-on y glisse un fichier e-mail **`.eml`**, le plugin l'analyse côté serveur et **pré-remplit**
-le formulaire (titre, description), l'agent n'ayant plus qu'à valider.
+on y glisse un fichier e-mail **`.eml` ou `.msg`**, et le plugin **pré-remplit** le formulaire
+(titre, description, source « E-Mail », pièces jointes, demandeur), l'agent n'ayant plus qu'à
+valider.
 
-> 🚧 **Squelette / V1 en cours.** Le parcours « déposer un `.eml` → analyse serveur →
-> pré-remplissage titre + description » est en place. Le rattachement du **demandeur par
-> e-mail**, des **observateurs** et l'**upload des pièces jointes** sont laissés en `TODO`
-> (à finaliser avec une instance GLPI 11 de test).
+> **État** : fonctionnel. Reste à faire : observateurs (Cc), règles d'affectation
+> (entité/catégorie/urgence/SLA), traductions. Voir le [CHANGELOG](../CHANGELOG.md).
+
+📘 **Guides** : [installation (admin)](../docs/INSTALLATION.md) ·
+[utilisation (agents)](../docs/UTILISATION.md). Ce README couvre les détails techniques.
 
 ## Formats pris en charge : `.eml` et `.msg`
 
 - **`.eml`** (RFC 822) → analysé **côté serveur** (laminas/laminas-mail, fourni par GLPI).
 - **`.msg`** (Outlook classic) → lu **côté navigateur** par la bibliothèque `msg.reader`
-  (cf. `public/js/vendor/README.md` — à récupérer une fois, licence Apache-2.0). Ses champs sont
-  envoyés au serveur pour le mapping/source ; ses pièces jointes sont rattachées côté client.
+  (Apache-2.0, **versionnée** dans `public/js/vendor/`). Ses champs sont envoyés au serveur pour
+  le mapping/source ; ses pièces jointes sont rattachées côté client.
 
 Le drag direct d'un mail depuis Outlook vers une page web n'est pas fiable (voir le CDC à la
 racine) ; le dépôt d'un **fichier** (`.eml`/`.msg`) fonctionne dans tous les navigateurs. Pour le
@@ -92,8 +94,11 @@ plugin/
 - La **source de la demande** est positionnée automatiquement sur « E-Mail »
   (`RequestType::getDefault('mail')`), comme le collecteur de mails natif.
 
-## Reste à faire (V1 & V2)
+## Reste à faire
 
-- [ ] Rattacher le demandeur par e-mail et les observateurs (widgets « acteurs » GLPI).
-- [ ] Affecter entité / catégorie / urgence / SLA par **règles** (V2).
+- [x] ~~Demandeur = expéditeur (compte GLPI si connu, sinon par e-mail)~~ — fait (v0.6.0).
+- [x] ~~Pièces jointes rattachées au ticket~~ — fait (images de signature inline filtrées).
+- [x] ~~Source « E-Mail » automatique~~ — fait.
+- [ ] Rattacher les **observateurs** (Cc) via le widget acteurs (`data-actor-type="observer"`).
+- [ ] Affecter entité / catégorie / urgence / SLA par **règles**.
 - [ ] Fournir les catalogues de traduction (`locales/`).

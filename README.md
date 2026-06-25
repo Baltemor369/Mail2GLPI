@@ -1,11 +1,16 @@
 # Mail2GLPI — Drag'n'Drop Mail → Ticket
 
-Convertir un e-mail en **ticket GLPI** en un geste : glisser-déposer (ou un clic depuis
-Outlook), extraction automatique des informations et **pré-remplissage des champs**, l'agent
-n'ayant « plus qu'à valider ».
+Convertir un e-mail en **ticket GLPI** en un geste : glisser-déposer un fichier e-mail,
+extraction automatique des informations et **pré-remplissage des champs**, l'agent n'ayant
+« plus qu'à valider ».
 
-> ⚠️ **Projet en phase de cadrage.** À ce stade, le dépôt contient l'étude de faisabilité et le
-> Cahier des Charges. Le code (plugin GLPI + add-in Outlook) n'est pas encore implémenté.
+> **État du projet** (voir [`CHANGELOG.md`](./CHANGELOG.md)) :
+> - **Brique A — Plugin GLPI** : ✅ **fonctionnel**. Dépôt d'un `.eml`/`.msg` → pré-remplit
+>   titre, description, source « E-Mail », pièces jointes (images de signature filtrées) et
+>   demandeur (compte GLPI si l'adresse est connue, sinon par e-mail). Reste à faire :
+>   observateurs (Cc), règles d'affectation (entité/catégorie/SLA), traductions.
+> - **Brique B — Add-in Outlook** : 🚧 **squelette** (non encore validé ; nécessite un GLPI en
+>   HTTPS et un tenant M365 de test).
 
 ## Pourquoi deux briques ?
 
@@ -37,17 +42,20 @@ Le projet livre donc **deux briques complémentaires** :
 
 ## Documentation
 
+- [`docs/INSTALLATION.md`](./docs/INSTALLATION.md) — **Guide d'installation** du plugin (admin).
+- [`docs/UTILISATION.md`](./docs/UTILISATION.md) — **Guide d'utilisation** au quotidien (agents).
+- [`plugin/README.md`](./plugin/README.md) — Détails techniques de la Brique A (plugin GLPI).
+- [`addin/README.md`](./addin/README.md) — Détails techniques de la Brique B (add-in Outlook).
 - [`CDC.md`](./CDC.md) — Cahier des Charges (périmètre, exigences, architecture, phasage, risques).
 - [`CHANGELOG.md`](./CHANGELOG.md) — Historique des versions.
 
 ## Feuille de route
 
-| Phase | Contenu |
+| État | Contenu |
 |---|---|
-| **POC / Spikes** | Lever les risques : drag Outlook, add-in Office.js, pré-remplissage formulaire GLPI 11. |
-| **MVP** | Add-in Outlook (3 clients) + mapping de base + auth jeton/utilisateur. |
-| **V1** | Plugin GLPI : dropzone `.eml` + pré-remplissage du formulaire. |
-| **V2** | Règles de mapping, observateurs Cc, support `.msg`, configuration avancée. |
+| ✅ Fait | Plugin GLPI : dropzone `.eml`/`.msg`, pré-remplissage (titre, description, source, pièces jointes, demandeur), script de déploiement |
+| ▶️ En cours / à suivre | Observateurs (Cc) ; règles d'affectation (entité/catégorie/urgence/SLA) ; traductions FR/EN |
+| 🚧 À valider | Add-in Outlook (Brique B) — nécessite GLPI en HTTPS + tenant M365 de test |
 
 ## Licence
 

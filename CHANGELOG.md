@@ -5,6 +5,16 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.6.2] - 2026-06-25
+
+### Documentation
+- Ajout de **`docs/INSTALLATION.md`** (guide administrateur : prérequis, déploiement, activation,
+  vérification, mise à jour, dépannage, désinstallation) et **`docs/UTILISATION.md`** (guide
+  agent : obtenir le fichier mail, créer le ticket, champs pré-remplis, limites, dépannage).
+- Mise à jour des README périmés : le README racine indiquait encore « code pas encore
+  implémenté » ; le README du plugin présentait le plugin comme un squelette. Tous deux
+  reflètent désormais l'état réel (Brique A fonctionnelle, Brique B en squelette).
+
 ## [0.6.1] - 2026-06-25
 
 ### Ajouté
