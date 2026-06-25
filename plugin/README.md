@@ -23,11 +23,31 @@ nouveau Outlook / OWA, c'est la **Brique B (add-in Outlook)** qui prend le relai
 ## Clé du plugin & déploiement
 
 La **clé du plugin est `mail2glpi`** (utilisée dans les noms de fonctions/hooks). Le dossier
-déployé dans GLPI **doit** s'appeler `mail2glpi` :
+déployé dans GLPI **doit** s'appeler `mail2glpi`.
+
+> ⚠️ Sur GLPI 11, déployez une **copie** du dossier (pas un lien symbolique) : la racine web
+> est `…/glpi/public/` et Apache ne sert pas les fichiers statiques à travers un symlink.
+
+### Déploiement automatique (recommandé)
+
+Un script à la racine du dépôt fait tout (MAJ git → copie → droits → cache) :
 
 ```bash
-# Exemple : lien symbolique depuis ce dépôt vers l'installation GLPI
-ln -s /chemin/vers/Mail2GLPI/plugin /chemin/vers/glpi/plugins/mail2glpi
+bash deploy.sh
+```
+
+Variables optionnelles : `GLPI_ROOT` (défaut `/var/www/html/glpi`), `WEB_USER` (défaut
+`www-data`), `GIT_REF` (défaut `origin/master`), `PULL` (`0` pour déployer le code local
+sans git). Exemple : `GLPI_ROOT=/var/www/glpi bash deploy.sh`.
+
+### Déploiement manuel
+
+```bash
+GLPIROOT=/var/www/html/glpi
+sudo rm -rf "$GLPIROOT/plugins/mail2glpi"
+sudo cp -r ./plugin "$GLPIROOT/plugins/mail2glpi"
+sudo chown -R www-data:www-data "$GLPIROOT/plugins/mail2glpi"
+sudo -u www-data php "$GLPIROOT/bin/console" cache:clear
 ```
 
 Puis, dans GLPI : **Configuration > Plugins** → installer et activer « Mail2GLPI ».

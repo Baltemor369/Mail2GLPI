@@ -5,6 +5,15 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.6.1] - 2026-06-25
+
+### Ajouté
+- **`deploy.sh`** : script de déploiement du plugin sur la VM GLPI (Debian) — met à jour le
+  dépôt git, copie le plugin, applique les droits au serveur web et vide le cache, en une
+  commande (`bash deploy.sh`). Configurable via `GLPI_ROOT`, `WEB_USER`, `GIT_REF`, `PULL`.
+  Garde-fous : vérifie les chemins et refuse un `rm -rf` hors de `…/plugins/mail2glpi`.
+- `.gitattributes` : force les fins de ligne LF pour les scripts `.sh` (sinon bash échoue sous Linux).
+
 ## [0.6.0] - 2026-06-25
 
 ### Ajouté

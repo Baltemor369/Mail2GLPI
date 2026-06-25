@@ -1,0 +1,6 @@
+# Les scripts shell doivent toujours être en fins de ligne LF (sinon bash échoue sous Linux).
+*.sh text eol=lf
+
+# La bibliothèque JS .msg vendorisée : conservée telle quelle (pas de normalisation EOL).
+/plugin/public/js/vendor/DataStream.js -text
+/plugin/public/js/vendor/msg.reader.js -text
