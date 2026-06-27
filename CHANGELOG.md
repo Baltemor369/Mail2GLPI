@@ -5,6 +5,14 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.7.1] - 2026-06-27
+
+### Corrigé
+- **Page de config : « action non autorisée » à l'enregistrement.** Le routeur GLPI 11 valide
+  et consomme déjà le jeton CSRF des POST ; la page refaisait un `Session::checkCSRF` sur un jeton
+  consommé → rejet. Suppression de la vérification manuelle (le routeur gère le CSRF, le champ
+  caché reste pour qu'il valide). Même correctif que celui appliqué à `parse.php` en v0.3.6.
+
 ## [0.7.0] - 2026-06-27
 
 ### Ajouté

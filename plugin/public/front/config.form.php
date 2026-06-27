@@ -16,7 +16,9 @@ $keys    = ['ai_enabled', 'ai_base_url', 'ai_model', 'ai_timeout', 'ai_api_key']
 
 // Enregistrement.
 if (isset($_POST['update'])) {
-    Session::checkCSRF($_POST);
+    // CSRF : validé EN AMONT par le routeur GLPI 11 (qui consomme le jeton du formulaire). On ne
+    // refait PAS de Session::checkCSRF ici, sinon on revérifie un jeton déjà consommé -> « action
+    // non autorisée ». Le champ caché _glpi_csrf_token reste présent pour que le routeur valide.
 
     $base_url_in = trim((string) ($_POST['ai_base_url'] ?? ''));
     // Confidentialité : l'URL doit être http(s) (et, en pratique, un endpoint LOCAL). On rejette
