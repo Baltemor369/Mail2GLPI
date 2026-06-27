@@ -120,12 +120,23 @@
             .catch((error) => setStatus(dropzone, "Erreur : " + error.message, "error"));
     }
 
-    /** Envoi commun vers l'endpoint d'analyse (gère le CSRF AJAX et les erreurs JSON/HTML). */
+    /** Analyse (parse.php) : extrait le mapping puis remplit le formulaire. */
     function sendToServer(formData, dropzone, onData) {
+        postForm("ajax/parse.php", formData)
+            .then(({ ok, json }) => {
+                if (!ok || json.error) {
+                    throw new Error(json.error || "Échec de l'analyse.");
+                }
+                onData(json.data);
+            })
+            .catch((error) => setStatus(dropzone, "Erreur : " + error.message, "error"));
+    }
+
+    /** POST générique vers un endpoint du plugin (gère le CSRF AJAX). Résout { ok, json }. */
+    function postForm(path, formData) {
         const csrfToken = readCsrfToken();
         formData.append("_glpi_csrf_token", csrfToken);
-
-        fetch(buildEndpoint(), {
+        return fetch(endpointUrl(path), {
             method: "POST",
             body: formData,
             credentials: "same-origin",
@@ -136,14 +147,7 @@
             },
         })
             .then((response) => response.text().then((text) => ({ ok: response.ok, text })))
-            .then(({ ok, text }) => {
-                const json = parseJsonOrThrow(text);
-                if (!ok || json.error) {
-                    throw new Error(json.error || "Échec de l'analyse.");
-                }
-                onData(json.data);
-            })
-            .catch((error) => setStatus(dropzone, "Erreur : " + error.message, "error"));
+            .then(({ ok, text }) => ({ ok: ok, json: parseJsonOrThrow(text) }));
     }
 
     function fillForm(data, dropzone, bundle) {
@@ -160,12 +164,85 @@
 
         // TODO : rattacher les observateurs (Cc) via le widget acteurs (data-actor-type="observer").
         const summary = buildSummary(data, bundle, attached);
+        let baseMsg;
+        let baseKind;
         if (bundle.eligible > 0 && attached === 0) {
             // Champs remplis mais aucune PJ ajoutée (éditeur non prêt / uploader indisponible).
-            setStatus(dropzone, "Ticket pré-rempli (pièces jointes à ajouter manuellement). " + summary, "error");
+            baseMsg = "Ticket pré-rempli (pièces jointes à ajouter manuellement). " + summary;
+            baseKind = "error";
         } else {
-            setStatus(dropzone, "Ticket pré-rempli. " + summary, "success");
+            baseMsg = "Ticket pré-rempli. " + summary;
+            baseKind = "success";
         }
+        setStatus(dropzone, baseMsg, baseKind);
+
+        // Enrichissement IA (catégorie / urgence / résumé) en arrière-plan : best-effort,
+        // ne bloque jamais l'agent. Met à jour le statut quand le LLM local répond.
+        enrichWithAi(data, dropzone, baseMsg, baseKind);
+    }
+
+    /* ----------------------------------------------------------------- */
+    /* Enrichissement IA (asynchrone)                                    */
+    /* ----------------------------------------------------------------- */
+
+    function enrichWithAi(data, dropzone, baseMsg, baseKind) {
+        const subject = data.title || "";
+        const body = data.body_plain || "";
+        if (!subject && !body) {
+            return;
+        }
+        setStatus(dropzone, baseMsg + " · IA : analyse en cours…", baseKind);
+
+        const formData = new FormData();
+        formData.append("subject", subject);
+        formData.append("body", body);
+
+        postForm("ajax/enrich.php", formData)
+            .then(({ ok, json }) => {
+                if (!ok || !json || typeof json !== "object") {
+                    setStatus(dropzone, baseMsg, baseKind);
+                    return;
+                }
+                applyAiEnrichment(json, dropzone, baseMsg, baseKind);
+            })
+            .catch(() => {
+                // best-effort : on retombe sur le statut de base, sans erreur bloquante.
+                setStatus(dropzone, baseMsg, baseKind);
+            });
+    }
+
+    function applyAiEnrichment(ai, dropzone, baseMsg, baseKind) {
+        const done = [];
+        if (ai.category_id) {
+            setDropdown('[name="itilcategories_id"]', ai.category_id, ai.category_name || "Catégorie");
+            done.push("catégorie");
+        }
+        if (ai.urgency) {
+            setDropdown('[name="urgency"]', ai.urgency, "Urgence " + ai.urgency);
+            done.push("urgence");
+        }
+        if (ai.summary) {
+            prependSummary(ai.summary);
+            done.push("résumé");
+        }
+        const tail = done.length > 0 ? "IA : " + done.join(" + ") + " ajouté(s)" : "IA : rien à suggérer";
+        setStatus(dropzone, baseMsg + " · " + tail, baseKind);
+    }
+
+    /** Insère le résumé IA en tête de la description (texte échappé). */
+    function prependSummary(summary) {
+        const editor = findContentEditor();
+        if (!editor) {
+            return;
+        }
+        const block = "<p><strong>Résumé (IA) :</strong> " + escapeHtml(summary) + "</p><p></p>";
+        editor.setContent(block + editor.getContent());
+    }
+
+    function escapeHtml(value) {
+        const div = document.createElement("div");
+        div.textContent = String(value);
+        return div.innerHTML;
     }
 
     /* ----------------------------------------------------------------- */
@@ -378,9 +455,9 @@
     /* Helpers divers                                                    */
     /* ----------------------------------------------------------------- */
 
-    function buildEndpoint() {
-        const root = (typeof CFG_GLPI !== "undefined" && CFG_GLPI.root_doc) || "";
-        return root + "/plugins/mail2glpi/ajax/parse.php";
+    function endpointUrl(path) {
+        const root = ((typeof CFG_GLPI !== "undefined" && CFG_GLPI.root_doc) || "").replace(/\/$/, "");
+        return root + "/plugins/mail2glpi/" + path;
     }
 
     function readCsrfToken() {

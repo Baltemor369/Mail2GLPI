@@ -26,9 +26,14 @@ class TicketMapper
      */
     public function map(array $parsed): array
     {
+        $plain = $this->buildPlain($parsed);
+
         return [
             'title'           => $this->buildTitle($parsed['subject'] ?? ''),
-            'content'         => $this->buildContent($parsed),
+            // Description : texte échappé (jamais de HTML brut non fiable injecté).
+            'content'         => nl2br(htmlspecialchars($plain, ENT_QUOTES, 'UTF-8')),
+            // Texte brut, destiné à l'enrichissement IA local (non affiché tel quel).
+            'body_plain'      => $plain,
             'requester_email' => $parsed['from']['email'] ?? '',
             'requester_name'  => $parsed['from']['name'] ?? '',
             'observers'       => $parsed['cc'] ?? [],
@@ -44,23 +49,19 @@ class TicketMapper
     }
 
     /**
-     * Construit le contenu (description) à partir du corps de l'e-mail.
-     *
-     * Choix de sécurité : pour le pré-remplissage, on produit du **texte échappé** (jamais de
-     * HTML brut non fiable). On privilégie le corps texte ; à défaut on dérive un texte depuis
-     * le HTML en supprimant les balises. La préservation du HTML riche (avec assainissement
-     * complet) est repoussée à la V1, pour réduire la surface XSS du squelette.
+     * Extrait le corps de l'e-mail en **texte brut**. Privilégie le corps texte ; à défaut,
+     * dérive un texte depuis le HTML en supprimant les balises. Ce texte sert à la fois de
+     * base à la description (après échappement) et à l'enrichissement IA local.
      */
-    private function buildContent(array $parsed): string
+    private function buildPlain(array $parsed): string
     {
         $text = trim((string) ($parsed['body_text'] ?? ''));
         if ($text === '') {
-            $html = (string) ($parsed['body_html'] ?? '');
-            // strip_tags ne suffit pas seul à neutraliser le HTML, mais le résultat est ensuite
-            // intégralement échappé : aucune balise ne peut donc être interprétée.
-            $text = trim(strip_tags($html));
+            // strip_tags laisse les entités (&amp;, &nbsp;…) ; on les décode pour obtenir un
+            // vrai texte brut (sinon double-encodage à l'affichage et dans le résumé IA).
+            $html = strip_tags((string) ($parsed['body_html'] ?? ''));
+            $text = trim(html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
         }
-
-        return nl2br(htmlspecialchars($text, ENT_QUOTES, 'UTF-8'));
+        return $text;
     }
 }

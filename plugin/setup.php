@@ -7,7 +7,7 @@
  * convertir un fichier e-mail (.eml) glissé en pré-remplissage du formulaire.
  */
 
-define('PLUGIN_MAIL2GLPI_VERSION', '0.6.2');
+define('PLUGIN_MAIL2GLPI_VERSION', '0.7.0');
 define('PLUGIN_MAIL2GLPI_MIN_GLPI_VERSION', '11.0.0');
 define('PLUGIN_MAIL2GLPI_MAX_GLPI_VERSION', '11.1.99');
 
@@ -35,6 +35,9 @@ function plugin_init_mail2glpi()
 
     // Ancre la dropzone dans la fiche d'un objet ITIL (ticket) — GLPI 11.
     $PLUGIN_HOOKS['post_itil_info_section']['mail2glpi'] = 'plugin_mail2glpi_itil_section';
+
+    // Page de configuration (lien « Configurer » depuis la liste des plugins).
+    $PLUGIN_HOOKS['config_page']['mail2glpi'] = 'front/config.form.php';
 }
 
 /**

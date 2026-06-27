@@ -5,6 +5,26 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.7.0] - 2026-06-27
+
+### Ajouté
+- **Suggestions IA locales** (catégorie, urgence, résumé) au dépôt d'un e-mail, via un **LLM
+  local** (endpoint compatible OpenAI, ex. Ollama). **Aucune donnée n'est envoyée vers le cloud.**
+  - Appel **asynchrone et best-effort** : le formulaire se pré-remplit immédiatement (titre,
+    description, source, demandeur, PJ), puis catégorie/urgence/résumé se complètent quand le
+    LLM répond. Si l'IA est désactivée/injoignable, le comportement de base est inchangé.
+  - `src/AiClient.php` (client HTTP, **un seul appel** renvoyant un JSON), `public/ajax/enrich.php`
+    (endpoint async ; valide la catégorie contre les catégories ITIL existantes ; borne les
+    entrées), `public/front/config.form.php` (page de configuration : activation, URL, modèle,
+    délai, clé optionnelle). Config stockée en base (`Config`).
+
+### Sécurité (findings du pipeline qualité)
+- Aucun secret renvoyé au client ; clé d'API **non réémise** dans le formulaire (champ vide,
+  sauvegarde conditionnelle).
+- Échappement de `$_SERVER['PHP_SELF']` (anti-XSS réfléchi) ; résumé IA inséré via texte échappé.
+- URL de base restreinte à http(s) ; curl sans redirection et protocoles limités (anti-SSRF).
+- Robustesse : garde `curl_init`, extraction JSON tolérante, décodage des entités HTML.
+
 ## [0.6.2] - 2026-06-25
 
 ### Documentation

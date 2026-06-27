@@ -94,11 +94,28 @@ plugin/
 - La **source de la demande** est positionnée automatiquement sur « E-Mail »
   (`RequestType::getDefault('mail')`), comme le collecteur de mails natif.
 
+## Suggestions IA (locales, optionnelles)
+
+Au dépôt d'un e-mail, le plugin peut suggérer **catégorie**, **urgence** et **résumé** via un
+**LLM local** (endpoint compatible OpenAI, ex. **Ollama**). **Aucune donnée n'est envoyée vers
+le cloud** — seul l'endpoint local configuré est appelé.
+
+- **Asynchrone & best-effort** : le formulaire se pré-remplit immédiatement ; les suggestions IA
+  arrivent quelques secondes après (un seul appel renvoyant un JSON catégorie/urgence/résumé).
+  Si l'IA est désactivée ou injoignable, le pré-remplissage de base est inchangé.
+- **Configuration** : *Configuration > Plugins > Mail2GLPI > Configurer* — activer, renseigner
+  l'URL de base (`http://IP-VM-IA:11434/v1`), le modèle (ex. `llama3.2:3b`), le délai, et une clé
+  optionnelle. Stockée en base (`Config`, contexte `plugin:mail2glpi`).
+- **Sécurité** : appels serveur uniquement ; catégorie validée contre les catégories ITIL
+  existantes ; entrées bornées ; URL restreinte à http(s) ; secret non réémis dans le formulaire.
+- Fichiers : `src/AiClient.php`, `public/ajax/enrich.php`, `public/front/config.form.php`.
+
 ## Reste à faire
 
 - [x] ~~Demandeur = expéditeur (compte GLPI si connu, sinon par e-mail)~~ — fait (v0.6.0).
 - [x] ~~Pièces jointes rattachées au ticket~~ — fait (images de signature inline filtrées).
 - [x] ~~Source « E-Mail » automatique~~ — fait.
+- [x] ~~Suggestions IA : catégorie, urgence, résumé (LLM local)~~ — fait (v0.7.0).
 - [ ] Rattacher les **observateurs** (Cc) via le widget acteurs (`data-actor-type="observer"`).
-- [ ] Affecter entité / catégorie / urgence / SLA par **règles**.
+- [ ] Affecter entité / catégorie / SLA par **règles** (sans IA).
 - [ ] Fournir les catalogues de traduction (`locales/`).
