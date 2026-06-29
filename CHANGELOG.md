@@ -5,6 +5,14 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.7.3] - 2026-06-29
+
+### Corrigé / Robustesse
+- **Forçage JSON ré-introduit avec repli** : l'appel IA tente d'abord `response_format`
+  (json_object) — fiable pour obtenir du JSON d'un petit modèle — puis réessaie **sans** ce
+  paramètre si la version d'Ollama ne le supporte pas. Corrige le cas où le modèle 3B renvoyait
+  du texte non-JSON (catégorie/urgence/résumé jamais extraits).
+
 ## [0.7.2] - 2026-06-29
 
 ### Corrigé / Robustesse

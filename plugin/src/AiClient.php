@@ -63,9 +63,7 @@ class AiClient
         $user = "Catégories autorisées :\n{$category_list}\n\n"
             . "Sujet : {$subject}\n\nCorps :\n{$body}";
 
-        // NB : on ne passe pas `response_format` (support variable selon la version d'Ollama →
-        // risque de 400). Le prompt impose le JSON et extractJson() tolère un éventuel habillage.
-        $payload = [
+        $base_payload = [
             'model'       => $this->model,
             'messages'    => [
                 ['role' => 'system', 'content' => $system],
@@ -75,11 +73,31 @@ class AiClient
             'stream'      => false,
         ];
 
+        // 1re tentative : on force une sortie JSON via `response_format` (supporté par Ollama
+        // récent et bien plus fiable qu'un petit modèle livré à lui-même).
+        $parsed = $this->callAndParse($base_payload + ['response_format' => ['type' => 'json_object']]);
+        if ($parsed !== null) {
+            return $parsed;
+        }
+
+        // Repli : sans `response_format`, au cas où la version d'Ollama ne le supporterait pas
+        // (on s'appuie alors sur le prompt + extractJson tolérant).
+        return $this->callAndParse($base_payload);
+    }
+
+    /**
+     * Effectue un appel et tente d'extraire un objet JSON de la réponse. Renvoie null en cas
+     * d'échec (HTTP, ou réponse non parsable).
+     *
+     * @param array<string,mixed> $payload
+     * @return array<string,mixed>|null
+     */
+    private function callAndParse(array $payload): ?array
+    {
         $response = $this->postChat($payload);
         if ($response === null) {
             return null;
         }
-
         $content = (string) ($response['choices'][0]['message']['content'] ?? '');
         return $this->extractJson($content);
     }
