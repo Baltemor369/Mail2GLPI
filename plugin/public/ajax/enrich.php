@@ -39,6 +39,42 @@ function mail2glpi_ai_out(array $data)
     exit;
 }
 
+/** Normalise une chaîne pour comparaison tolérante (minuscules + suppression des accents). */
+function mail2glpi_norm(string $s): string
+{
+    $s = mb_strtolower(trim($s), 'UTF-8');
+    if (class_exists('Normalizer')) {
+        $decomposed = \Normalizer::normalize($s, \Normalizer::FORM_D);
+        if (is_string($decomposed)) {
+            $s = (string) preg_replace('/\p{Mn}/u', '', $decomposed);
+        }
+    }
+    return $s;
+}
+
+/**
+ * Convertit l'urgence renvoyée par le modèle en entier GLPI 1-5. Accepte un chiffre (1-5) ou un
+ * mot fréquent (« Faible », « Haute », « critique »…), sinon null.
+ *
+ * @param mixed $raw
+ */
+function mail2glpi_parse_urgency($raw): ?int
+{
+    if (is_int($raw) || (is_string($raw) && ctype_digit(trim((string) $raw)))) {
+        $n = (int) $raw;
+        return ($n >= 1 && $n <= 5) ? $n : null;
+    }
+    $map = [
+        'tres basse' => 1, 'tres faible' => 1, 'very low' => 1,
+        'basse' => 2, 'faible' => 2, 'low' => 2,
+        'moyenne' => 3, 'normale' => 3, 'medium' => 3, 'normal' => 3,
+        'haute' => 4, 'elevee' => 4, 'high' => 4, 'importante' => 4,
+        'tres haute' => 5, 'tres elevee' => 5, 'critique' => 5, 'urgente' => 5,
+        'urgent' => 5, 'very high' => 5, 'critical' => 5,
+    ];
+    return $map[mail2glpi_norm((string) $raw)] ?? null;
+}
+
 try {
     // Sécurité : utilisateur authentifié + droit de créer des tickets (CSRF géré par le routeur).
     Session::checkLoginUser();
@@ -60,13 +96,19 @@ try {
         mail2glpi_ai_out([]);
     }
 
-    // Catégories ITIL existantes : nom -> id (restreintes à l'entité courante par find()).
-    $categories = [];
+    // Catégories ITIL existantes (restreintes à l'entité courante par find()).
+    $categories  = []; // nom exact -> id
+    $cat_by_norm = []; // nom normalisé (sans accents/casse) -> ['id'=>…, 'name'=>…]
     $itil = new ITILCategory();
     foreach ($itil->find([], [], MAIL2GLPI_AI_MAX_CATEGORIES) as $row) {
         $name = trim((string) ($row['completename'] ?? $row['name'] ?? ''));
-        if ($name !== '' && !isset($categories[$name])) {
-            $categories[$name] = (int) $row['id'];
+        if ($name === '' || isset($categories[$name])) {
+            continue;
+        }
+        $categories[$name] = (int) $row['id'];
+        $norm = mail2glpi_norm($name);
+        if (!isset($cat_by_norm[$norm])) {
+            $cat_by_norm[$norm] = ['id' => (int) $row['id'], 'name' => $name];
         }
     }
 
@@ -89,16 +131,25 @@ try {
         $out['summary'] = $summary;
     }
 
-    $urgency = (int) ($result['urgency'] ?? 0);
-    if ($urgency >= 1 && $urgency <= 5) {
+    $urgency = mail2glpi_parse_urgency($result['urgency'] ?? null);
+    if ($urgency !== null) {
         $out['urgency'] = $urgency;
     }
 
-    // La catégorie n'est acceptée que si elle correspond EXACTEMENT à une catégorie existante.
+    // La catégorie n'est acceptée que si elle correspond à une catégorie existante (exacte, ou
+    // tolérante aux accents/casse). On ne pose jamais une catégorie inventée.
     $category = trim((string) ($result['category'] ?? ''));
-    if ($category !== '' && isset($categories[$category])) {
-        $out['category_id']   = $categories[$category];
-        $out['category_name'] = $category;
+    if ($category !== '') {
+        if (isset($categories[$category])) {
+            $out['category_id']   = $categories[$category];
+            $out['category_name'] = $category;
+        } else {
+            $norm = mail2glpi_norm($category);
+            if (isset($cat_by_norm[$norm])) {
+                $out['category_id']   = $cat_by_norm[$norm]['id'];
+                $out['category_name'] = $cat_by_norm[$norm]['name'];
+            }
+        }
     }
 
     mail2glpi_ai_out($out);

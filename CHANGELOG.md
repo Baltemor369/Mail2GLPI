@@ -5,6 +5,17 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.7.5] - 2026-06-29
+
+### Corrigé / Amélioré
+- **Urgence IA** : le modèle renvoyait souvent un mot (« Faible », « Haute »…) → désormais
+  converti en niveau GLPI 1-5 (chiffre direct ou mot FR/EN mappé). Prompt renforcé (chiffre).
+- **Catégorie IA** : correspondance tolérante aux **accents et à la casse** contre les catégories
+  ITIL existantes (ex. « Materiel » → « Matériel »).
+- **`deploy.sh`** : réactive automatiquement le plugin après déploiement (`glpi:plugin:install`
+  + `glpi:plugin:activate`), car GLPI le désactive à chaque changement de version. Best-effort
+  (sinon réactivation via Configuration > Plugins).
+
 ## [0.7.4] - 2026-06-29
 
 ### Corrigé

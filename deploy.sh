@@ -80,4 +80,14 @@ sudo chown -R "$WEB_USER:$WEB_USER" "$PLUGIN_DEST"
 info "Vidage du cache GLPI (utilisateur $WEB_USER)"
 sudo -u "$WEB_USER" php "$GLPI_ROOT/bin/console" cache:clear
 
+# --- 4) Réactivation du plugin ----------------------------------------------
+# GLPI désactive le plugin à chaque changement de version : on relance la mise à jour
+# (install) puis l'activation. Best-effort (|| true) : en cas d'échec, réactiver via l'UI
+# (Configuration > Plugins). L'option --username couvre les commandes qui l'exigent.
+info "Réactivation du plugin mail2glpi"
+sudo -u "$WEB_USER" php "$GLPI_ROOT/bin/console" glpi:plugin:install --username="${GLPI_USER:-glpi}" mail2glpi 2>/dev/null \
+    || sudo -u "$WEB_USER" php "$GLPI_ROOT/bin/console" glpi:plugin:install mail2glpi 2>/dev/null || true
+sudo -u "$WEB_USER" php "$GLPI_ROOT/bin/console" glpi:plugin:activate mail2glpi 2>/dev/null || true
+
 info "Terminé — plugin mail2glpi v${VERSION:-?} déployé. Pensez à recharger la page (Ctrl+F5)."
+echo "    Si le plugin est marqué « à mettre à jour » dans Configuration > Plugins, réactivez-le là."

@@ -57,7 +57,7 @@ class AiClient
         $system = "Tu es un assistant de support informatique. À partir d'un e-mail, tu réponds "
             . "UNIQUEMENT par un objet JSON valide (aucun texte autour), avec exactement ces clés :\n"
             . '"category" : une valeur EXACTEMENT identique à l\'une des catégories autorisées, ou "" si aucune ne convient ;' . "\n"
-            . '"urgency" : un entier de 1 (très basse) à 5 (très haute) ;' . "\n"
+            . '"urgency" : un CHIFFRE de 1 (très basse) à 5 (très haute) — un entier, pas un mot ;' . "\n"
             . '"summary" : un résumé en français, 1 à 2 phrases.';
 
         $user = "Catégories autorisées :\n{$category_list}\n\n"
