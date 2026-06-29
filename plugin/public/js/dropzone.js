@@ -214,7 +214,9 @@
     function applyAiEnrichment(ai, dropzone, baseMsg, baseKind) {
         const done = [];
         if (ai.category_id) {
-            setDropdown('[name="itilcategories_id"]', ai.category_id, ai.category_name || "Catégorie");
+            // quiet=true : ne PAS déclencher le rechargement de gabarit GLPI (qui resoumet le
+            // formulaire et provoquait un 403). La catégorie reste posée pour la création.
+            setDropdown('[name="itilcategories_id"]', ai.category_id, ai.category_name || "Catégorie", true);
             done.push("catégorie");
         }
         if (ai.urgency) {
@@ -257,7 +259,15 @@
         }
     }
 
-    function setDropdown(selector, value, fallbackLabel) {
+    /**
+     * Positionne la valeur d'un select (rendu en select2 par GLPI).
+     *
+     * @param {boolean} quiet  si true, met à jour l'affichage select2 SANS déclencher les autres
+     *   handlers « change ». Indispensable pour la catégorie : un « change » classique réveille
+     *   le handler GLPI qui recharge le gabarit lié à la catégorie en RESOUMETTANT le formulaire
+     *   (ce qui provoquait une navigation et un 403). Le champ reste valorisé pour la soumission.
+     */
+    function setDropdown(selector, value, fallbackLabel, quiet) {
         const select = document.querySelector(selector);
         if (!select) {
             return;
@@ -269,10 +279,10 @@
             select.add(new Option(fallbackLabel || strValue, strValue, true, true));
         }
         select.value = strValue;
-        // GLPI rend ce champ en select2 (jQuery) ; le trigger rafraîchit l'affichage.
         if (window.jQuery) {
-            window.jQuery(select).trigger("change");
-        } else {
+            // change.select2 = rafraîchit l'affichage select2 sans réveiller les handlers GLPI.
+            window.jQuery(select).trigger(quiet ? "change.select2" : "change");
+        } else if (!quiet) {
             select.dispatchEvent(new Event("change", { bubbles: true }));
         }
     }

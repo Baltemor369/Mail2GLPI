@@ -5,6 +5,15 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.7.4] - 2026-06-29
+
+### Corrigé
+- **« Action non autorisée » (403) après l'analyse IA.** Poser la catégorie via un `change`
+  classique réveillait le handler GLPI qui recharge le gabarit de la catégorie en **resoumettant**
+  le formulaire de ticket → soumission auto rejetée (403) et navigation vers la page d'erreur.
+  La catégorie est désormais posée « en silence » (`change.select2`) : l'affichage est mis à jour
+  sans déclencher de rechargement, et le champ reste valorisé pour la création du ticket.
+
 ## [0.7.3] - 2026-06-29
 
 ### Corrigé / Robustesse
