@@ -63,15 +63,16 @@ class AiClient
         $user = "Catégories autorisées :\n{$category_list}\n\n"
             . "Sujet : {$subject}\n\nCorps :\n{$body}";
 
+        // NB : on ne passe pas `response_format` (support variable selon la version d'Ollama →
+        // risque de 400). Le prompt impose le JSON et extractJson() tolère un éventuel habillage.
         $payload = [
-            'model'           => $this->model,
-            'messages'        => [
+            'model'       => $this->model,
+            'messages'    => [
                 ['role' => 'system', 'content' => $system],
                 ['role' => 'user', 'content' => $user],
             ],
-            'temperature'     => 0.1,
-            'stream'          => false,
-            'response_format' => ['type' => 'json_object'],
+            'temperature' => 0.1,
+            'stream'      => false,
         ];
 
         $response = $this->postChat($payload);

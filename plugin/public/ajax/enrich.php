@@ -72,6 +72,13 @@ try {
 
     $result = (new AiClient($config))->enrich($subject, $body, array_keys($categories));
     if ($result === null) {
+        // Cause la plus fréquente : LLM injoignable depuis le serveur GLPI (pare-feu/route),
+        // timeout, ou réponse non-JSON. On journalise pour le diagnostic (best-effort sinon).
+        trigger_error(
+            'mail2glpi: appel IA sans résultat (LLM injoignable, timeout ou réponse invalide) — '
+            . 'base_url=' . (string) ($config['ai_base_url'] ?? ''),
+            E_USER_WARNING
+        );
         mail2glpi_ai_out([]);
     }
 

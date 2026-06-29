@@ -5,6 +5,15 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.7.2] - 2026-06-29
+
+### Corrigé / Robustesse
+- **Retrait de `response_format`** dans l'appel au LLM : son support varie selon la version
+  d'Ollama (risque de 400 qui faisait échouer l'enrichissement). Le JSON est obtenu via le
+  prompt + un parseur tolérant (`extractJson`).
+- **Diagnostic** : `enrich.php` journalise désormais quand l'appel IA ne renvoie rien (LLM
+  injoignable / timeout / réponse invalide), au lieu d'échouer silencieusement.
+
 ## [0.7.1] - 2026-06-27
 
 ### Corrigé
