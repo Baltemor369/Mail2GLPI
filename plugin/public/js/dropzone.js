@@ -184,17 +184,9 @@
         setDescription(data.content);
 
         if (data.source_id) {
-            m2gTrace({ t: "before:source" });
             setDropdown('[name="requesttypes_id"]', data.source_id, "E-Mail");
-            m2gTrace({ t: "after:source" });
-        }
-        if (data.requester) {
-            m2gTrace({ t: "before:requester" });
-            setRequester(data.requester);
-            m2gTrace({ t: "after:requester" });
         }
         const attached = attachFileObjects(bundle.files);
-        m2gTrace({ t: "after:attach", attached: attached });
 
         // TODO : rattacher les observateurs (Cc) via le widget acteurs (data-actor-type="observer").
         const summary = buildSummary(data, bundle, attached);
@@ -210,19 +202,33 @@
         }
         setStatus(dropzone, baseMsg, baseKind);
 
-        // Enrichissement IA (catégorie / urgence / résumé) en arrière-plan : best-effort,
-        // ne bloque jamais l'agent. Met à jour le statut quand le LLM local répond.
-        enrichWithAi(data, dropzone, baseMsg, baseKind);
+        // IMPORTANT — ordre : on pose le DEMANDEUR en DERNIER, après l'enrichissement IA.
+        // Poser un acteur déclenche un rechargement du formulaire par GLPI (pour appliquer
+        // l'entité/gabarit du demandeur). Ce rechargement resoumet le formulaire et PRÉSERVE les
+        // champs déjà remplis. En posant le demandeur APRÈS l'IA, la catégorie/urgence/résumé sont
+        // déjà en place et survivent au rechargement (sinon il partait ~30 ms après le dépôt, bien
+        // avant que le LLM réponde ~10 s plus tard, et écrasait l'enrichissement).
+        const setRequesterLast = function () {
+            if (data.requester) {
+                setRequester(data.requester);
+            }
+        };
+
+        // Enrichissement IA (catégorie / urgence / résumé) en arrière-plan : best-effort, ne bloque
+        // jamais l'agent. `setRequesterLast` est appelé une fois l'IA appliquée (ou ignorée).
+        enrichWithAi(data, dropzone, baseMsg, baseKind, setRequesterLast);
     }
 
     /* ----------------------------------------------------------------- */
     /* Enrichissement IA (asynchrone)                                    */
     /* ----------------------------------------------------------------- */
 
-    function enrichWithAi(data, dropzone, baseMsg, baseKind) {
+    function enrichWithAi(data, dropzone, baseMsg, baseKind, onComplete) {
+        const finish = typeof onComplete === "function" ? onComplete : function () {};
         const subject = data.title || "";
         const body = data.body_plain || "";
         if (!subject && !body) {
+            finish(); // pas de contenu pour l'IA : on enchaîne quand même (pose du demandeur).
             return;
         }
         setStatus(dropzone, baseMsg + " · IA : analyse en cours…", baseKind);
@@ -242,14 +248,15 @@
             .then(({ ok, json }) => {
                 m2gTrace({ t: "response", seq: mySeq, ok: ok, stale: isStale(), json: json });
                 if (isStale()) {
-                    return; // un dépôt plus récent a pris la main : résultat obsolète, on l'ignore.
+                    return; // un dépôt plus récent a pris la main : il posera son propre demandeur.
                 }
                 console.debug("[mail2glpi] IA ← enrich.php", { ok, json });
-                if (!ok || !json || typeof json !== "object") {
+                if (ok && json && typeof json === "object") {
+                    applyAiEnrichment(json, dropzone, baseMsg, baseKind);
+                } else {
                     setStatus(dropzone, baseMsg, baseKind);
-                    return;
                 }
-                applyAiEnrichment(json, dropzone, baseMsg, baseKind);
+                finish(); // demandeur posé APRÈS l'IA (le rechargement GLPI préservera les champs).
             })
             .catch((err) => {
                 m2gTrace({ t: "error", seq: mySeq, stale: isStale(), err: String(err) });
@@ -259,6 +266,7 @@
                 // best-effort : on retombe sur le statut de base, sans erreur bloquante.
                 console.debug("[mail2glpi] IA enrich.php erreur", err);
                 setStatus(dropzone, baseMsg, baseKind);
+                finish();
             });
     }
 

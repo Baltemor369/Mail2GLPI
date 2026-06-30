@@ -5,6 +5,18 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.8.3] - 2026-06-30
+
+### Corrigé (cause racine du « rien ne s'applique »)
+- **Le demandeur est désormais posé APRÈS l'enrichissement IA.** Diagnostic (trace persistante) :
+  poser un acteur déclenche un **rechargement du formulaire par GLPI** (`select2:select` →
+  rechargement pour appliquer l'entité/gabarit). Ce rechargement partait **~30 ms après le dépôt**,
+  soit ~10 s **avant** la réponse du LLM : l'IA s'appliquait ensuite sur une page déjà condamnée et
+  tout était perdu. En posant le demandeur **en dernier** (après application de catégorie/urgence/
+  résumé), le rechargement resoumet le formulaire et **préserve** les champs déjà remplis.
+- `enrichWithAi` accepte un callback `onComplete` (= pose du demandeur), appelé après application
+  de l'IA (succès, IA désactivée, ou erreur).
+
 ## [0.8.2] - 2026-06-30
 
 ### Ajouté (diagnostic temporaire)
