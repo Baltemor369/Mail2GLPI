@@ -1,132 +1,162 @@
-# Mail2GLPI — Plugin GLPI (Brique A)
+# Mail2GLPI
 
-Plugin GLPI 11 qui ajoute une **zone de dépôt** dans le formulaire de création de ticket :
-on y glisse un fichier e-mail **`.eml` ou `.msg`**, et le plugin **pré-remplit** le formulaire
-(titre, description, source « E-Mail », pièces jointes, demandeur), l'agent n'ayant plus qu'à
-valider.
+> **GLPI 11** plugin: drag and drop an email (`.eml` or `.msg`) onto the ticket creation form and
+> the fields are **filled in automatically** — optionally with **local-AI suggestions** (category,
+> urgency, summary). The agent only has to review and submit.
 
-> **État** : fonctionnel. Reste à faire : observateurs (Cc), règles d'affectation
-> (entité/catégorie/urgence/SLA), traductions. Voir le [CHANGELOG](../CHANGELOG.md).
+**Version:** 1.0.0 · **GLPI:** 11.0 → 11.1 · **License:** GPL-3.0-or-later
 
-📘 **Guides** : [installation (admin)](../docs/INSTALLATION.md) ·
-[utilisation (agents)](../docs/UTILISATION.md). Ce README couvre les détails techniques.
+---
 
-## Formats pris en charge : `.eml` et `.msg`
+## Purpose
 
-- **`.eml`** (RFC 822) → analysé **côté serveur** (laminas/laminas-mail, fourni par GLPI).
-- **`.msg`** (Outlook classic) → lu **côté navigateur** par la bibliothèque `msg.reader`
-  (Apache-2.0, **versionnée** dans `public/js/vendor/`). Ses champs sont envoyés au serveur pour
-  le mapping/source ; ses pièces jointes sont rattachées côté client.
+Turning an email into a GLPI ticket is usually tedious: copy the subject, paste the body, find the
+requester, attach the files, pick a category… Mail2GLPI does all of this **in a single drag &
+drop**, and can **suggest the category, urgency and a summary** through a **locally hosted AI
+model** — without any data leaving your network.
 
-Le drag direct d'un mail depuis Outlook vers une page web n'est pas fiable (voir le CDC à la
-racine) ; le dépôt d'un **fichier** (`.eml`/`.msg`) fonctionne dans tous les navigateurs. Pour le
-nouveau Outlook / OWA, c'est la **Brique B (add-in Outlook)** qui prend le relais.
+## Features
 
-## Clé du plugin & déploiement
+- 📥 **Drag & drop** of an `.eml` (RFC 822) or `.msg` (Outlook classic) email file onto the ticket
+  creation form.
+- ✍️ **Automatic pre-fill**: title (subject), description (sanitized body text), **source
+  “Email”**, **requester** (GLPI account if the address is known, otherwise an email requester),
+  **attachments** (inline signature images filtered out).
+- 🤖 **Local-AI suggestions** (optional): **category** (validated against existing ITIL
+  categories), **urgency** (1-5), **summary**. 100% local, best-effort (never blocks ticket
+  creation).
+- 🎛️ **Two-level switch**: **global** enablement by the admin (plugin configuration) + a **per-drop**
+  checkbox for the agent (use AI or not for this ticket).
+- 🧪 **Debug / self-test mode** (admin) to diagnose the AI chain without dropping an email.
+- 🔒 **Privacy**: contents are sent only to the configured **local** endpoint, never to a cloud
+  service.
 
-La **clé du plugin est `mail2glpi`** (utilisée dans les noms de fonctions/hooks). Le dossier
-déployé dans GLPI **doit** s'appeler `mail2glpi`.
+## How it works
 
-> ⚠️ Sur GLPI 11, déployez une **copie** du dossier (pas un lien symbolique) : la racine web
-> est `…/glpi/public/` et Apache ne sert pas les fichiers statiques à travers un symlink.
+```
+Drop .eml/.msg
+      │
+      ├─ .eml → parsed SERVER-side (ajax/parse.php → MailParser, laminas/laminas-mail)
+      └─ .msg → read in the BROWSER (msg.reader lib) then mapped by the server
+      │
+      ▼
+Form pre-fill: title · description · source · attachments
+      │
+      ├─ (if AI enabled + checkbox ticked)
+      │     subject + body ─► ajax/enrich.php ─► AiClient ─► LOCAL LLM (OpenAI-compatible API)
+      │                                    ◄─ JSON { category, urgency, summary }
+      │     apply: category (validated) · urgency · summary at the top of the description
+      │
+      ▼
+Requester set LAST (GLPI reloads the form to apply the requester's entity/template;
+setting it after AI lets the reload preserve every field already filled in)
+      │
+      ▼
+The agent reviews and clicks “Create”
+```
 
-### Déploiement automatique (recommandé)
+- **`.eml`**: everything is parsed server-side (secure — the client file name is never used as a
+  path).
+- **`.msg`**: read in the browser (the binary is already available there); its fields are sent to
+  the server for mapping, its attachments are attached client-side.
+- **AI**: a **single call** returning JSON; the category is set only if it matches an existing
+  category (exact match, then accent/case-insensitive, then on the leaf name for category trees).
 
-Un script à la racine du dépôt fait tout (MAJ git → copie → droits → cache) :
+## Requirements & recommended specs
+
+### Plugin (GLPI server)
+- **GLPI 11.0 → 11.1**, PHP **8.x** (standard GLPI extensions; `intl` recommended).
+- For **large attachments**: raise PHP `upload_max_filesize` / `post_max_size` / `memory_limit`
+  **and** the maximum document size in GLPI (see `docs/INSTALLATION.md`).
+- The plugin itself is **lightweight** (no service, no dedicated table).
+
+### Local AI (optional) — inference server such as **Ollama**
+| Profile | CPU / GPU | RAM | Recommended model | Indicative latency |
+|---|---|---|---|---|
+| **Minimum (CPU)** | 2 vCPU | 8 GB | `llama3.2:1b` (q4) | ~3-8 s |
+| **Comfortable (CPU)** | 4+ vCPU | 8-16 GB | `llama3.2:3b` (q4) | ~5-15 s |
+| **Fast (GPU)** | GPU 4-6 GB VRAM | 8-16 GB | `llama3.2:3b` | **< 1-2 s** |
+
+**Speed tips:**
+- `OLLAMA_KEEP_ALIVE=-1`: keeps the model in RAM (removes the cold reload, ~55 s → near zero).
+- Use a **smaller model** (`llama3.2:1b`) on CPU; use a **GPU** for a real performance jump.
+- The endpoint must expose the **OpenAI-compatible** API (`/v1/chat/completions`), reachable
+  **locally** from the GLPI server (open the port on the AI VM's firewall).
+
+> Design constraint: **no data leaves for the cloud**. The AI is **self-hosted** on your network.
+
+## Installation
+
+> ⚠️ **GLPI 11**: deploy a **copy** of the folder (not a symlink). The deployed folder **must** be
+> named `mail2glpi`.
 
 ```bash
+# All-in-one script (git pull → copy → permissions → cache → reactivation)
 bash deploy.sh
 ```
+Optional variables: `GLPI_ROOT` (default `/var/www/html/glpi`), `WEB_USER` (`www-data`),
+`GIT_REF` (`origin/master`), `PULL=0` (deploy local code without git).
 
-Variables optionnelles : `GLPI_ROOT` (défaut `/var/www/html/glpi`), `WEB_USER` (défaut
-`www-data`), `GIT_REF` (défaut `origin/master`), `PULL` (`0` pour déployer le code local
-sans git). Exemple : `GLPI_ROOT=/var/www/glpi bash deploy.sh`.
+Then, in GLPI: **Setup > Plugins** → install and enable **Mail2GLPI**.
+Detailed guide: **[docs/INSTALLATION.md](../docs/INSTALLATION.md)**.
 
-### Déploiement manuel
+## Update
 
 ```bash
-GLPIROOT=/var/www/html/glpi
-sudo rm -rf "$GLPIROOT/plugins/mail2glpi"
-sudo cp -r ./plugin "$GLPIROOT/plugins/mail2glpi"
-sudo chown -R www-data:www-data "$GLPIROOT/plugins/mail2glpi"
-sudo -u www-data php "$GLPIROOT/bin/console" cache:clear
+cd /opt/Mail2GLPI && bash deploy.sh
 ```
+The script **re-enables the plugin automatically** (GLPI disables it on every version change).
+Reload the page with **Ctrl+F5** (browser cache).
 
-Puis, dans GLPI : **Configuration > Plugins** → installer et activer « Mail2GLPI ».
+## Configuration (local AI)
 
-## Structure
+**Setup > Plugins > Mail2GLPI > Configure**:
+- **Enable** AI suggestions (master switch, admin),
+- **Base URL** of the local endpoint (e.g. `http://AI-VM-IP:11434/v1`),
+- **Model** (e.g. `llama3.2:3b`), **max timeout**, **API key** (optional),
+- **Debug mode** (admin): adds a `_debug` object to responses and enables the self-test
+  `ajax/enrich.php?selftest=1`.
+
+Settings are stored in the database (`Config`, context `plugin:mail2glpi`). On the agent side, an
+**“AI suggestions”** checkbox below the dropzone toggles AI **for that drop**.
+
+## Project structure
 
 ```
 plugin/
-  setup.php                    Init du plugin, hooks, rendu de la section dropzone
-  hook.php                     Install / uninstall (sans état pour l'instant)
-  composer.json                Autoload PSR-4 GlpiPlugin\Mail2glpi
-  src/MailParser.php           Analyse MIME du .eml (laminas/laminas-mail fourni par GLPI)
-  src/TicketMapper.php         Mapping e-mail -> champs ticket + assainissement HTML
-  public/ajax/parse.php        Endpoint : reçoit le .eml, renvoie le mapping en JSON
-  public/js/dropzone.js        Dropzone + pré-remplissage du formulaire
-  public/css/dropzone.css      Styles de la dropzone
-  locales/                     Catalogues de traduction (domaine mail2glpi)
+  setup.php                     Init, hooks, dropzone section rendering (+ AI checkbox)
+  hook.php                      Install / uninstall (default config values)
+  composer.json                 PSR-4 autoload GlpiPlugin\Mail2glpi
+  src/
+    MailParser.php              MIME parsing of the .eml (laminas/laminas-mail bundled with GLPI)
+    TicketMapper.php            Email → ticket fields mapping + sanitization
+    AiClient.php                HTTP client to the local LLM (OpenAI-compatible API)
+    AiText.php                  Pure helpers (normalization, urgency parsing) — unit-testable
+  public/
+    ajax/parse.php              Endpoint: receives the email, returns the JSON mapping
+    ajax/enrich.php             Endpoint: AI suggestions (category/urgency/summary)
+    front/config.form.php       Configuration page (AI)
+    js/dropzone.js              Dropzone + form pre-fill + AI call
+    js/vendor/                  msg.reader (.msg) — Apache-2.0, vendored
+    css/dropzone.css            Styles
+  locales/                      Translation catalogs (mail2glpi domain)
+docs/                           INSTALLATION.md · UTILISATION.md
+tests/AiTextTest.php            Framework-less unit tests (php tests/AiTextTest.php)
+deploy.sh                       Automatic deployment + reactivation
 ```
 
-> **GLPI 11** : les assets statiques et scripts PHP accessibles par le web doivent être sous
-> `public/`. L'URL n'inclut pas `/public` (ex. `public/js/dropzone.js` →
-> `/plugins/mail2glpi/js/dropzone.js`). Les scripts de `public/` sont initialisés par le routeur
-> GLPI (pas d'`include inc/includes.php`).
+> **GLPI 11**: web-accessible assets and scripts must live under `public/`; the URL excludes
+> `/public` (e.g. `public/js/dropzone.js` → `/plugins/mail2glpi/js/dropzone.js`). Scripts under
+> `public/` are bootstrapped by the GLPI router (no `include`).
 
-## Sécurité
+## Security & privacy
 
-- L'endpoint `ajax/parse.php` exige un **utilisateur authentifié**, le **droit de créer des
-  tickets** et un **jeton CSRF** valide.
-- Seuls les fichiers **`.eml`** sont acceptés, avec une **limite de taille** (10 Mo) ; seul le
-  fichier temporaire uploadé est lu (le nom de fichier client n'est jamais utilisé comme chemin).
-- Pour le pré-remplissage, la description est produite en **texte échappé** (jamais de HTML
-  brut non fiable injecté) afin de réduire la surface XSS. La préservation du HTML riche, avec
-  assainissement complet, est repoussée à la V1.
+- **Authenticated** endpoints (ticket-creation right); CSRF handled by the GLPI 11 router.
+- **Bounded** inputs; description injected as **escaped text** (reduced XSS surface).
+- AI: **server-side calls only**, URL restricted to **local** http(s), **secret never re-emitted**
+  nor logged; the `_debug` object is admin-only.
 
-## Pièces jointes & source
+## License
 
-- Les **pièces jointes** de l'e-mail sont ajoutées à l'uploader du formulaire via la fonction
-  GLPI `uploadFile()` (champs cachés `_filename[]` rattachés à la soumission). Plafonds :
-  **5 Mo par pièce** et **10 Mo cumulés** ; au-delà, la pièce est ignorée (signalée à l'agent).
-  Le contrôle des **types de fichiers** autorisés reste assuré par la politique de documents de
-  GLPI à l'upload — ne pas la désactiver.
-- La **source de la demande** est positionnée automatiquement sur « E-Mail »
-  (`RequestType::getDefault('mail')`), comme le collecteur de mails natif.
-
-## Suggestions IA (locales, optionnelles)
-
-Au dépôt d'un e-mail, le plugin peut suggérer **catégorie**, **urgence** et **résumé** via un
-**LLM local** (endpoint compatible OpenAI, ex. **Ollama**). **Aucune donnée n'est envoyée vers
-le cloud** — seul l'endpoint local configuré est appelé.
-
-- **Asynchrone & best-effort** : le formulaire se pré-remplit immédiatement ; les suggestions IA
-  arrivent quelques secondes après (un seul appel renvoyant un JSON catégorie/urgence/résumé).
-  Si l'IA est désactivée ou injoignable, le pré-remplissage de base est inchangé.
-- **Configuration** : *Configuration > Plugins > Mail2GLPI > Configurer* — activer, renseigner
-  l'URL de base (`http://IP-VM-IA:11434/v1`), le modèle (ex. `llama3.2:3b`), le délai, et une clé
-  optionnelle. Stockée en base (`Config`, contexte `plugin:mail2glpi`).
-- **Robustesse** : la catégorie est validée contre les catégories ITIL existantes (correspondance
-  exacte, puis tolérante aux accents/casse, puis sur le nom de feuille pour les taxonomies
-  hiérarchiques `A > B > Feuille`) ; l'urgence est normalisée en 1-5 (chiffre, flottant entier, ou
-  mot FR/EN).
-- **Sécurité** : appels serveur uniquement ; entrées bornées ; URL restreinte à http(s) (endpoint
-  local) ; secret jamais réémis ni journalisé ; `ai_timeout` plafonné [5, 300] s ; `set_time_limit`
-  borné (anti-DoS).
-- **Mode debug / self-test** (option « Mode debug IA », **admin uniquement**) : la réponse de
-  `enrich.php` inclut un objet `_debug` (config lue, `http_code`, erreur curl, contenu brut du
-  modèle, JSON décodé) ; `ajax/enrich.php?selftest=1` exécute un exemple intégré — pour
-  diagnostiquer la chaîne IA sans déposer d'e-mail.
-- **Fichiers** : `src/AiClient.php` (client LLM), `src/AiText.php` (helpers purs testables),
-  `public/ajax/enrich.php` (endpoint), `public/front/config.form.php` (config). Tests :
-  `tests/AiTextTest.php` (`php tests/AiTextTest.php`).
-
-## Reste à faire
-
-- [x] ~~Demandeur = expéditeur (compte GLPI si connu, sinon par e-mail)~~ — fait (v0.6.0).
-- [x] ~~Pièces jointes rattachées au ticket~~ — fait (images de signature inline filtrées).
-- [x] ~~Source « E-Mail » automatique~~ — fait.
-- [x] ~~Suggestions IA : catégorie, urgence, résumé (LLM local)~~ — fait (v0.7.0).
-- [ ] Rattacher les **observateurs** (Cc) via le widget acteurs (`data-actor-type="observer"`).
-- [ ] Affecter entité / catégorie / SLA par **règles** (sans IA).
-- [ ] Fournir les catalogues de traduction (`locales/`).
+**GPL-3.0-or-later**. Vendored third-party library: `msg.reader` (Apache-2.0, see
+`public/js/vendor/LICENSE`).

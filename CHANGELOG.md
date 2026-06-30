@@ -5,6 +5,17 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [1.0.0] - 2026-06-30
+
+Première version **stable**. Fonctionnalité complète : dépôt `.eml`/`.msg` → pré-remplissage du
+ticket (titre, description, source, demandeur, pièces jointes) + **suggestions IA locales**
+(catégorie, urgence, résumé), validées en production.
+
+### Modifié
+- **README du plugin entièrement réécrit** (en anglais, format standard) : nom, utilité,
+  fonctionnalités, fonctionnement, prérequis & specs recommandées (CPU/GPU/RAM/modèle),
+  installation, mise à jour, configuration, structure, sécurité, licence.
+
 ## [0.9.0] - 2026-06-30
 
 ### Ajouté
