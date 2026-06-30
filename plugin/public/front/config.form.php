@@ -12,7 +12,7 @@
 Session::checkRight('config', UPDATE);
 
 $context = 'plugin:mail2glpi';
-$keys    = ['ai_enabled', 'ai_base_url', 'ai_model', 'ai_timeout', 'ai_api_key'];
+$keys    = ['ai_enabled', 'ai_base_url', 'ai_model', 'ai_timeout', 'ai_api_key', 'ai_debug'];
 
 // Enregistrement.
 if (isset($_POST['update'])) {
@@ -37,6 +37,7 @@ if (isset($_POST['update'])) {
         'ai_base_url' => $base_url_in,
         'ai_model'    => trim((string) ($_POST['ai_model'] ?? '')),
         'ai_timeout'  => (string) max(5, (int) ($_POST['ai_timeout'] ?? 60)),
+        'ai_debug'    => isset($_POST['ai_debug']) ? '1' : '0',
     ];
     // La clé d'API n'est mise à jour que si un nouveau secret est fourni (champ laissé vide =
     // on conserve la clé existante, et on ne la réémet jamais dans le formulaire).
@@ -57,8 +58,10 @@ $base_url     = htmlspecialchars((string) ($config['ai_base_url'] ?? ''), ENT_QU
 $model        = htmlspecialchars((string) ($config['ai_model'] ?? ''), ENT_QUOTES, 'UTF-8');
 $timeout      = (int) ($config['ai_timeout'] ?? 60);
 $has_key      = trim((string) ($config['ai_api_key'] ?? '')) !== '';
+$debug        = ($config['ai_debug'] ?? '0') === '1';
 $token        = Session::getNewCSRFToken();
 $checked      = $enabled ? 'checked' : '';
+$debug_checked = $debug ? 'checked' : '';
 $key_holder   = $has_key ? '•••••••• (clé définie — laisser vide pour conserver)' : '';
 
 // $_SERVER['PHP_SELF'] est échappé : on neutralise tout PATH_INFO injecté (XSS réfléchi).
@@ -107,6 +110,18 @@ echo <<<HTML
       <label for="ai_api_key">Clé d'API (optionnelle, si reverse-proxy d'auth)</label><br>
       <input type="password" id="ai_api_key" name="ai_api_key" size="40"
              autocomplete="new-password" value="" placeholder="{$key_holder}">
+    </p>
+
+    <p>
+      <label>
+        <input type="checkbox" name="ai_debug" value="1" {$debug_checked}>
+        Mode debug IA (ajoute un objet <code>_debug</code> aux réponses et active le self-test)
+      </label>
+      <br><small class="text-muted">
+        À activer pour diagnostiquer, puis à désactiver. Self-test (admin) :
+        <a href="../ajax/enrich.php?selftest=1" target="_blank" rel="noopener">
+          ajax/enrich.php?selftest=1</a> — exécute un exemple et affiche toute la chaîne IA.
+      </small>
     </p>
 
     <p>

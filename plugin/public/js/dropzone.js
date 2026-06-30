@@ -197,21 +197,25 @@
         formData.append("subject", subject);
         formData.append("body", body);
 
+        console.debug("[mail2glpi] IA → enrich.php", { subjectLen: subject.length, bodyLen: body.length });
         postForm("ajax/enrich.php", formData)
             .then(({ ok, json }) => {
+                console.debug("[mail2glpi] IA ← enrich.php", { ok, json });
                 if (!ok || !json || typeof json !== "object") {
                     setStatus(dropzone, baseMsg, baseKind);
                     return;
                 }
                 applyAiEnrichment(json, dropzone, baseMsg, baseKind);
             })
-            .catch(() => {
+            .catch((err) => {
                 // best-effort : on retombe sur le statut de base, sans erreur bloquante.
+                console.debug("[mail2glpi] IA enrich.php erreur", err);
                 setStatus(dropzone, baseMsg, baseKind);
             });
     }
 
     function applyAiEnrichment(ai, dropzone, baseMsg, baseKind) {
+        console.debug("[mail2glpi] applyAiEnrichment", ai);
         const done = [];
         if (ai.category_id) {
             // quiet=true : ne PAS déclencher le rechargement de gabarit GLPI (qui resoumet le

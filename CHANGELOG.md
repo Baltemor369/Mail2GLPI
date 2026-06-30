@@ -5,6 +5,18 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.7.6] - 2026-06-30
+
+### Ajouté (diagnostic)
+- **Mode debug IA** (`ai_debug`, case dans la config) : la réponse de `enrich.php` inclut un objet
+  `_debug` (config lue, `configured`, nb de catégories, `http_code`, erreur curl, contenu brut du
+  modèle, JSON décodé). Permet d'identifier la cause exacte d'un échec IA en un seul test.
+- **Self-test par URL** (admin + debug) : `ajax/enrich.php?selftest=1` exécute un exemple intégré
+  et renvoie le `_debug` — diagnostic sans avoir à déposer un e-mail.
+- `AiClient` expose `getLastHttpCode()`, `getLastError()`, `getLastRawContent()` (dernier appel).
+- `enrich.php` : `set_time_limit(0)` pour ne pas couper l'inférence à froid ; traces `console.debug`
+  côté `dropzone.js`.
+
 ## [0.7.5] - 2026-06-29
 
 ### Corrigé / Amélioré

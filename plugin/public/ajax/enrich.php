@@ -9,11 +9,18 @@
  *
  * Confidentialité : les données ne sont envoyées qu'à l'endpoint local configuré (jamais au cloud).
  * Robustesse : toute erreur ou IA désactivée -> réponse JSON vide ({}), sans bloquer le ticket.
+ *
+ * Mode debug (config `ai_debug`) : ajoute un objet `_debug` à la réponse (état config, http_code,
+ * erreur curl, contenu brut du modèle, JSON décodé…). Self-test admin : `?selftest=1` (GET) exécute
+ * un exemple intégré et renvoie le `_debug` — pour diagnostiquer sans avoir à déposer un e-mail.
  */
 
 use GlpiPlugin\Mail2glpi\AiClient;
 
 header('Content-Type: application/json; charset=utf-8');
+
+// L'inférence locale (surtout à froid) peut être longue : on évite que max_execution_time la coupe.
+@set_time_limit(0);
 
 /** Longueurs max envoyées au modèle (anti-DoS / perf). */
 if (!defined('MAIL2GLPI_AI_MAX_SUBJECT')) {
@@ -28,14 +35,19 @@ if (!defined('MAIL2GLPI_AI_MAX_CATEGORIES')) {
 }
 
 /**
- * Renvoie un objet JSON et arrête le script.
+ * Renvoie la réponse JSON (en y joignant `_debug` si le mode debug est actif) et arrête le script.
  *
- * @param array<string,mixed> $data
+ * @param array<string,mixed> $out
+ * @param bool                 $debug_on
+ * @param array<string,mixed>  $debug
  * @return never
  */
-function mail2glpi_ai_out(array $data)
+function mail2glpi_out(array $out, bool $debug_on, array $debug = [])
 {
-    echo json_encode($data);
+    if ($debug_on) {
+        $out['_debug'] = $debug;
+    }
+    echo json_encode($out);
     exit;
 }
 
@@ -75,25 +87,39 @@ function mail2glpi_parse_urgency($raw): ?int
     return $map[mail2glpi_norm((string) $raw)] ?? null;
 }
 
+$debug_on = false;
+
 try {
-    // Sécurité : utilisateur authentifié + droit de créer des tickets (CSRF géré par le routeur).
     Session::checkLoginUser();
-    if (!Session::haveRight('ticket', CREATE)) {
-        mail2glpi_ai_out([]);
-    }
 
-    // Configuration IA (stockée en base via Config). Désactivée -> rien à faire.
+    $is_admin   = Session::haveRight('config', UPDATE);
+    $can_create = Session::haveRight('ticket', CREATE);
+
     $config = Config::getConfigurationValues('plugin:mail2glpi', [
-        'ai_enabled', 'ai_base_url', 'ai_model', 'ai_timeout', 'ai_api_key',
+        'ai_enabled', 'ai_base_url', 'ai_model', 'ai_timeout', 'ai_api_key', 'ai_debug',
     ]);
-    if (($config['ai_enabled'] ?? '0') !== '1') {
-        mail2glpi_ai_out([]);
+    $debug_on = ($config['ai_debug'] ?? '0') === '1';
+
+    // Self-test : réservé à un admin avec le debug actif (?selftest=1). Renvoie toujours le _debug.
+    $selftest = isset($_GET['selftest']) && $is_admin && $debug_on;
+
+    if (!$can_create && !$selftest) {
+        mail2glpi_out([], $debug_on, ['stop' => 'no_ticket_create_right']);
+    }
+    if (($config['ai_enabled'] ?? '0') !== '1' && !$selftest) {
+        mail2glpi_out([], $debug_on, ['stop' => 'ai_disabled']);
     }
 
-    $subject = mb_substr(trim((string) ($_POST['subject'] ?? '')), 0, MAIL2GLPI_AI_MAX_SUBJECT);
-    $body    = mb_substr(trim((string) ($_POST['body'] ?? '')), 0, MAIL2GLPI_AI_MAX_BODY);
+    if ($selftest) {
+        $subject = 'Imprimante en panne au 2e étage';
+        $body    = "Bonjour, l'imprimante du 2e étage affiche une erreur depuis ce matin, "
+            . "plus personne ne peut imprimer. Merci de créer un ticket.";
+    } else {
+        $subject = mb_substr(trim((string) ($_POST['subject'] ?? '')), 0, MAIL2GLPI_AI_MAX_SUBJECT);
+        $body    = mb_substr(trim((string) ($_POST['body'] ?? '')), 0, MAIL2GLPI_AI_MAX_BODY);
+    }
     if ($subject === '' && $body === '') {
-        mail2glpi_ai_out([]);
+        mail2glpi_out([], $debug_on, ['stop' => 'empty_input']);
     }
 
     // Catégories ITIL existantes (restreintes à l'entité courante par find()).
@@ -112,16 +138,32 @@ try {
         }
     }
 
-    $result = (new AiClient($config))->enrich($subject, $body, array_keys($categories));
+    $ai     = new AiClient($config);
+    $result = $ai->enrich($subject, $body, array_keys($categories));
+
+    // Diagnostic (n'est renvoyé que si ai_debug est actif).
+    $debug = [
+        'enabled'          => (string) ($config['ai_enabled'] ?? '0'),
+        'configured'       => $ai->isConfigured(),
+        'base_url'         => (string) ($config['ai_base_url'] ?? ''),
+        'model'            => (string) ($config['ai_model'] ?? ''),
+        'timeout'          => (int) ($config['ai_timeout'] ?? 60),
+        'categories_count' => count($categories),
+        'http_code'        => $ai->getLastHttpCode(),
+        'curl_error'       => $ai->getLastError(),
+        'raw_content'      => mb_substr($ai->getLastRawContent(), 0, 1000),
+        'parsed'           => $result,
+        'selftest'         => $selftest,
+    ];
+
     if ($result === null) {
-        // Cause la plus fréquente : LLM injoignable depuis le serveur GLPI (pare-feu/route),
-        // timeout, ou réponse non-JSON. On journalise pour le diagnostic (best-effort sinon).
         trigger_error(
-            'mail2glpi: appel IA sans résultat (LLM injoignable, timeout ou réponse invalide) — '
-            . 'base_url=' . (string) ($config['ai_base_url'] ?? ''),
+            'mail2glpi: appel IA sans résultat — http=' . $ai->getLastHttpCode()
+            . ' err=' . $ai->getLastError()
+            . ' base_url=' . (string) ($config['ai_base_url'] ?? ''),
             E_USER_WARNING
         );
-        mail2glpi_ai_out([]);
+        mail2glpi_out([], $debug_on, $debug);
     }
 
     $out = [];
@@ -152,8 +194,8 @@ try {
         }
     }
 
-    mail2glpi_ai_out($out);
+    mail2glpi_out($out, $debug_on, $debug);
 } catch (\Throwable $e) {
     trigger_error('mail2glpi enrich error: ' . $e->getMessage(), E_USER_WARNING);
-    mail2glpi_ai_out([]); // best-effort : jamais bloquant
+    mail2glpi_out([], $debug_on, ['exception' => $e->getMessage()]);
 }

@@ -15,6 +15,7 @@ const MAIL2GLPI_CONFIG_DEFAULTS = [
     'ai_model'    => 'llama3.2:3b',
     'ai_timeout'  => '60',
     'ai_api_key'  => '',
+    'ai_debug'    => '0',
 ];
 
 /**

@@ -18,6 +18,11 @@ class AiClient
     private int $timeout;
     private string $apiKey;
 
+    /** Diagnostic du dernier appel (pour le mode debug de enrich.php). */
+    private int $lastHttpCode = 0;
+    private string $lastError = '';
+    private string $lastRawContent = '';
+
     /**
      * @param array<string,mixed> $config clés : ai_base_url, ai_model, ai_timeout, ai_api_key
      */
@@ -33,6 +38,24 @@ class AiClient
     public function isConfigured(): bool
     {
         return $this->baseUrl !== '' && $this->model !== '';
+    }
+
+    /** Code HTTP du dernier appel (0 = pas de réponse / non joignable). */
+    public function getLastHttpCode(): int
+    {
+        return $this->lastHttpCode;
+    }
+
+    /** Message d'erreur du dernier appel (curl ou HTTP non-2xx), '' si aucun. */
+    public function getLastError(): string
+    {
+        return $this->lastError;
+    }
+
+    /** Contenu brut renvoyé par le modèle au dernier appel (avant extraction JSON). */
+    public function getLastRawContent(): string
+    {
+        return $this->lastRawContent;
     }
 
     /**
@@ -99,6 +122,7 @@ class AiClient
             return null;
         }
         $content = (string) ($response['choices'][0]['message']['content'] ?? '');
+        $this->lastRawContent = $content;
         return $this->extractJson($content);
     }
 
@@ -135,11 +159,20 @@ class AiClient
         } elseif (defined('CURLOPT_PROTOCOLS') && defined('CURLPROTO_HTTP') && defined('CURLPROTO_HTTPS')) {
             curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
         }
-        $raw  = curl_exec($ch);
-        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $raw    = curl_exec($ch);
+        $code   = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $errno  = curl_errno($ch);
+        $errmsg = curl_error($ch);
         curl_close($ch);
 
+        $this->lastHttpCode = $code;
+        $this->lastError    = $errno !== 0 ? ('curl(' . $errno . '): ' . $errmsg) : '';
+
         if (!is_string($raw) || $code < 200 || $code >= 300) {
+            if (is_string($raw) && $this->lastError === '') {
+                // HTTP non-2xx avec corps : on conserve un extrait comme indice (ex. 400 Ollama).
+                $this->lastError = 'HTTP ' . $code . ' : ' . mb_substr($raw, 0, 300);
+            }
             return null;
         }
         $data = json_decode($raw, true);
