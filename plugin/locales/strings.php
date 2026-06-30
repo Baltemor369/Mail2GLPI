@@ -56,6 +56,23 @@ return [
         'err_unreadable_file'     => 'Unreadable file.',
         'err_unsupported_mode'    => 'Unsupported mode.',
         'err_parse_failed'        => 'Failed to parse the email.',
+
+        // Configuration page (admin)
+        'cfg_url_must_http'       => 'The base URL must start with http:// or https://',
+        'cfg_saved'               => 'Configuration saved.',
+        'cfg_heading'             => 'Mail2GLPI — AI suggestions (local)',
+        'cfg_intro'               => 'Suggestions for <strong>category</strong>, <strong>urgency</strong> and <strong>summary</strong> when an email is dropped, via a <strong>local</strong> LLM (e.g. Ollama). No data is sent to an external service. Best-effort feature: if the AI is unreachable, the basic pre-fill works normally.',
+        'cfg_enable'              => 'Enable AI suggestions',
+        'cfg_base_url_label'      => 'Base URL (OpenAI-compatible endpoint)',
+        'cfg_base_url_help'       => 'e.g. Ollama: http://AI-VM-IP:11434/v1 (must remain a LOCAL endpoint)',
+        'cfg_model_label'         => 'Model',
+        'cfg_timeout_label'       => 'Max timeout (seconds)',
+        'cfg_apikey_label'        => 'API key (optional, for an auth reverse-proxy)',
+        'cfg_key_holder'          => '•••••••• (key set — leave empty to keep it)',
+        'cfg_debug_label'         => 'AI debug mode (adds a <code>_debug</code> object to responses and enables the self-test)',
+        'cfg_debug_help_1'        => 'Enable to diagnose, then disable. Self-test (admin):',
+        'cfg_debug_help_2'        => 'runs a built-in example and shows the whole AI chain.',
+        'cfg_save'                => 'Save',
     ],
 
     'fr' => [
@@ -96,5 +113,22 @@ return [
         'err_unreadable_file'     => 'Fichier illisible.',
         'err_unsupported_mode'    => 'Mode non pris en charge.',
         'err_parse_failed'        => "Échec de l'analyse de l'e-mail.",
+
+        // Page de configuration (admin)
+        'cfg_url_must_http'       => "L'URL de base doit commencer par http:// ou https://",
+        'cfg_saved'               => 'Configuration enregistrée.',
+        'cfg_heading'             => 'Mail2GLPI — Suggestions IA (local)',
+        'cfg_intro'               => "Suggestions de <strong>catégorie</strong>, <strong>urgence</strong> et <strong>résumé</strong> au dépôt d'un e-mail, via un LLM <strong>local</strong> (ex. Ollama). Aucune donnée n'est envoyée vers un service externe. Fonctionnalité best-effort : si l'IA est injoignable, le pré-remplissage de base fonctionne normalement.",
+        'cfg_enable'              => 'Activer les suggestions IA',
+        'cfg_base_url_label'      => 'URL de base (endpoint compatible OpenAI)',
+        'cfg_base_url_help'       => 'Ex. Ollama : http://IP-VM-IA:11434/v1 (doit rester un endpoint LOCAL)',
+        'cfg_model_label'         => 'Modèle',
+        'cfg_timeout_label'       => 'Délai max (secondes)',
+        'cfg_apikey_label'        => "Clé d'API (optionnelle, si reverse-proxy d'auth)",
+        'cfg_key_holder'          => '•••••••• (clé définie — laisser vide pour conserver)',
+        'cfg_debug_label'         => 'Mode debug IA (ajoute un objet <code>_debug</code> aux réponses et active le self-test)',
+        'cfg_debug_help_1'        => 'À activer pour diagnostiquer, puis à désactiver. Self-test (admin) :',
+        'cfg_debug_help_2'        => 'exécute un exemple intégré et affiche toute la chaîne IA.',
+        'cfg_save'                => 'Enregistrer',
     ],
 ];

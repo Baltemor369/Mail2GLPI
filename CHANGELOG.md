@@ -5,6 +5,13 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [1.1.1] - 2026-06-30
+
+### Ajouté
+- **Page de configuration (admin) traduite** (anglais / français), via le même dictionnaire
+  `locales/strings.php` (clés `cfg_*`). L'internationalisation couvre désormais toute l'interface
+  visible. (Reste seulement le titre de repli « (Sans objet) » d'un e-mail sans objet.)
+
 ## [1.1.0] - 2026-06-30
 
 ### Ajouté

@@ -28,7 +28,8 @@ model** — without any data leaving your network.
 - 🎛️ **Two-level switch**: **global** enablement by the admin (plugin configuration) + a **per-drop**
   checkbox for the agent (use AI or not for this ticket).
 - 🧪 **Debug / self-test mode** (admin) to diagnose the AI chain without dropping an email.
-- 🌐 **Bilingual UI** (English / French): all agent-facing texts follow the GLPI user's language.
+- 🌐 **Bilingual UI** (English / French): all UI texts (dropzone, statuses, admin configuration
+  page) follow the GLPI user's language.
 - 🔒 **Privacy**: contents are sent only to the configured **local** endpoint, never to a cloud
   service.
 
