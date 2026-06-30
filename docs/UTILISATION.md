@@ -40,6 +40,23 @@ Le plugin accepte deux formats de fichier :
 | **Source de la demande** | « E-Mail » |
 | **Demandeur** | L'expéditeur : son **compte GLPI** si l'adresse est connue, sinon en **demandeur par e-mail** (notifications activées) |
 | **Pièces jointes** | Les fichiers joints à l'e-mail (rattachés au ticket) |
+| **Catégorie · Urgence · Résumé** *(si l'IA est activée)* | Suggérés par une **IA locale** quelques secondes après le dépôt — voir §4 bis |
+
+---
+
+## 3 bis. Suggestions IA (si activées par l'administrateur)
+
+Si votre administrateur a activé l'IA, quelques secondes après le dépôt vous verrez **en plus** :
+
+- une **catégorie** proposée (si elle correspond à une catégorie existante),
+- une **urgence** positionnée,
+- un bloc **« Résumé (IA) »** ajouté **en tête** de la description.
+
+Le statut sous la zone l'indique : *« … · IA : catégorie + urgence + résumé ajouté(s) »*.
+
+> Ce sont des **suggestions** : vérifiez-les et corrigez-les si besoin avant de créer le ticket.
+> L'IA est **best-effort** et **100 % locale** (aucune donnée envoyée à l'extérieur) : si elle
+> est indisponible, le reste du pré-remplissage fonctionne normalement, sans suggestion.
 
 ---
 

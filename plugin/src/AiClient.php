@@ -59,8 +59,10 @@ class AiClient
     }
 
     /**
-     * Un **unique** appel qui demande au modèle de renvoyer un JSON
-     * { category, urgency, summary }. Un seul appel = une seule latence (important en CPU).
+     * Demande au modèle un JSON { category, urgency, summary }. En pratique un seul appel ; une
+     * 2e tentative (sans response_format) n'a lieu QUE si le 1er appel a abouti côté HTTP mais que
+     * le JSON était inexploitable (200) ou que le format a été refusé (400). Si le serveur est
+     * injoignable / en timeout (code 0 ou autre erreur), on n'inflige pas une 2e attente.
      *
      * @param string       $subject     sujet de l'e-mail
      * @param string       $body        corps (texte brut)
@@ -103,9 +105,14 @@ class AiClient
             return $parsed;
         }
 
-        // Repli : sans `response_format`, au cas où la version d'Ollama ne le supporterait pas
-        // (on s'appuie alors sur le prompt + extractJson tolérant).
-        return $this->callAndParse($base_payload);
+        // Repli sans `response_format` UNIQUEMENT si le serveur a répondu : code 400 (format refusé
+        // par cette version d'Ollama) ou 200 (réponse reçue mais JSON inexploitable). Pour une
+        // injoignabilité / un timeout (code 0 ou 5xx), on s'arrête : pas de 2e attente longue.
+        if (in_array($this->lastHttpCode, [200, 400], true)) {
+            return $this->callAndParse($base_payload);
+        }
+
+        return null;
     }
 
     /**
@@ -139,6 +146,14 @@ class AiClient
             $headers[] = 'Authorization: Bearer ' . $this->apiKey;
         }
 
+        // JSON_INVALID_UTF8_SUBSTITUTE : un e-mail mal encodé (octets Latin-1 déclarés UTF-8) ne
+        // doit pas faire échouer silencieusement json_encode (qui renverrait false -> corps vide).
+        $body = json_encode($payload, JSON_INVALID_UTF8_SUBSTITUTE);
+        if ($body === false) {
+            $this->lastError = 'json_encode: ' . json_last_error_msg();
+            return null;
+        }
+
         $ch = curl_init($this->baseUrl . '/chat/completions');
         if ($ch === false) {
             return null;
@@ -147,7 +162,7 @@ class AiClient
             CURLOPT_POST           => true,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER     => $headers,
-            CURLOPT_POSTFIELDS     => (string) json_encode($payload),
+            CURLOPT_POSTFIELDS     => $body,
             CURLOPT_TIMEOUT        => $this->timeout,
             CURLOPT_CONNECTTIMEOUT => 5,
             // Sécurité : pas de suivi de redirection, et schémas restreints à http/https

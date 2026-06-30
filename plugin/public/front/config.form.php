@@ -36,7 +36,7 @@ if (isset($_POST['update'])) {
         'ai_enabled'  => isset($_POST['ai_enabled']) ? '1' : '0',
         'ai_base_url' => $base_url_in,
         'ai_model'    => trim((string) ($_POST['ai_model'] ?? '')),
-        'ai_timeout'  => (string) max(5, (int) ($_POST['ai_timeout'] ?? 60)),
+        'ai_timeout'  => (string) min(300, max(5, (int) ($_POST['ai_timeout'] ?? 60))),
         'ai_debug'    => isset($_POST['ai_debug']) ? '1' : '0',
     ];
     // La clé d'API n'est mise à jour que si un nouveau secret est fourni (champ laissé vide =

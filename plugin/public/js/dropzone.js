@@ -18,6 +18,11 @@
 
     const DROPZONE_ID = "mail2glpi-dropzone";
 
+    // Jeton de séquence : si l'utilisateur dépose un 2e fichier avant que l'enrichissement IA du
+    // 1er ne réponde, on jette le résultat périmé (sinon les résumés/catégories se mélangeraient
+    // dans la description). Incrémenté à chaque dépôt ; capturé dans la closure de l'appel IA.
+    let enrichSeq = 0;
+
     document.addEventListener("dragover", onDragOver, true);
     document.addEventListener("dragleave", onDragLeave, true);
     document.addEventListener("drop", onDocumentDrop, true);
@@ -193,6 +198,11 @@
         }
         setStatus(dropzone, baseMsg + " · IA : analyse en cours…", baseKind);
 
+        // On capture la séquence courante : tout dépôt ultérieur l'incrémentera et rendra
+        // ce résultat périmé (à ignorer pour ne pas corrompre le formulaire du nouveau dépôt).
+        const mySeq = ++enrichSeq;
+        const isStale = () => mySeq !== enrichSeq;
+
         const formData = new FormData();
         formData.append("subject", subject);
         formData.append("body", body);
@@ -200,6 +210,9 @@
         console.debug("[mail2glpi] IA → enrich.php", { subjectLen: subject.length, bodyLen: body.length });
         postForm("ajax/enrich.php", formData)
             .then(({ ok, json }) => {
+                if (isStale()) {
+                    return; // un dépôt plus récent a pris la main : résultat obsolète, on l'ignore.
+                }
                 console.debug("[mail2glpi] IA ← enrich.php", { ok, json });
                 if (!ok || !json || typeof json !== "object") {
                     setStatus(dropzone, baseMsg, baseKind);
@@ -208,6 +221,9 @@
                 applyAiEnrichment(json, dropzone, baseMsg, baseKind);
             })
             .catch((err) => {
+                if (isStale()) {
+                    return;
+                }
                 // best-effort : on retombe sur le statut de base, sans erreur bloquante.
                 console.debug("[mail2glpi] IA enrich.php erreur", err);
                 setStatus(dropzone, baseMsg, baseKind);

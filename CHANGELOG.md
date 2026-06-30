@@ -5,6 +5,36 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.8.0] - 2026-06-30
+
+Jalon : **Suggestions IA validées en production** (catégorie, urgence, résumé via LLM local,
+100 % privé). Cette version intègre les corrections issues de la revue de code et de l'audit de
+sécurité du sous-système IA.
+
+### Corrigé (revue de code)
+- **AiClient** : la 2ᵉ tentative d'appel (sans `response_format`) n'a lieu **que** si le serveur a
+  répondu (HTTP 200 non parsable, ou 400 format refusé) ; plus de double attente en cas
+  d'injoignabilité/timeout (évitait un pire cas ~2×timeout saturant PHP-FPM).
+- **AiClient** : `json_encode` sécurisé (`JSON_INVALID_UTF8_SUBSTITUTE` + garde) — un e-mail mal
+  encodé n'envoie plus un corps vide silencieusement.
+- **dropzone.js** : garde anti-concurrence (jeton de séquence) — deux dépôts rapprochés ne
+  mélangent plus résumés/catégories dans la description (résultat périmé ignoré).
+- **enrich.php** : urgence flottante entière (`3.0`) désormais acceptée ; correspondance de
+  catégorie par **nom de feuille** pour les taxonomies hiérarchiques (`A > B > Feuille`) ;
+  `ITILCategory::find()` trié (`completename`) → sous-ensemble déterministe sous plafond.
+- **deploy.sh** : les erreurs d'installation/maj du plugin ne sont plus masquées.
+
+### Sécurité (audit)
+- Objet `_debug` réservé aux **admins** (`config/UPDATE`) — ne révèle plus l'URL interne du LLM à
+  un agent standard quand le debug est actif.
+- `ai_timeout` plafonné [5, 300] s côté serveur ; `set_time_limit` borné au timeout + marge (au
+  lieu de `0`) — garde-fou anti-DoS.
+
+### Refactor / Tests
+- Helpers purs extraits dans `GlpiPlugin\Mail2glpi\AiText` (`normalize`, `parseUrgency`).
+- Suite de tests sans framework `tests/AiTextTest.php` (`php tests/AiTextTest.php`) couvrant
+  `parseUrgency`, `normalize` et `AiClient::extractJson`.
+
 ## [0.7.6] - 2026-06-30
 
 ### Ajouté (diagnostic)

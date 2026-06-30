@@ -106,9 +106,20 @@ le cloud** — seul l'endpoint local configuré est appelé.
 - **Configuration** : *Configuration > Plugins > Mail2GLPI > Configurer* — activer, renseigner
   l'URL de base (`http://IP-VM-IA:11434/v1`), le modèle (ex. `llama3.2:3b`), le délai, et une clé
   optionnelle. Stockée en base (`Config`, contexte `plugin:mail2glpi`).
-- **Sécurité** : appels serveur uniquement ; catégorie validée contre les catégories ITIL
-  existantes ; entrées bornées ; URL restreinte à http(s) ; secret non réémis dans le formulaire.
-- Fichiers : `src/AiClient.php`, `public/ajax/enrich.php`, `public/front/config.form.php`.
+- **Robustesse** : la catégorie est validée contre les catégories ITIL existantes (correspondance
+  exacte, puis tolérante aux accents/casse, puis sur le nom de feuille pour les taxonomies
+  hiérarchiques `A > B > Feuille`) ; l'urgence est normalisée en 1-5 (chiffre, flottant entier, ou
+  mot FR/EN).
+- **Sécurité** : appels serveur uniquement ; entrées bornées ; URL restreinte à http(s) (endpoint
+  local) ; secret jamais réémis ni journalisé ; `ai_timeout` plafonné [5, 300] s ; `set_time_limit`
+  borné (anti-DoS).
+- **Mode debug / self-test** (option « Mode debug IA », **admin uniquement**) : la réponse de
+  `enrich.php` inclut un objet `_debug` (config lue, `http_code`, erreur curl, contenu brut du
+  modèle, JSON décodé) ; `ajax/enrich.php?selftest=1` exécute un exemple intégré — pour
+  diagnostiquer la chaîne IA sans déposer d'e-mail.
+- **Fichiers** : `src/AiClient.php` (client LLM), `src/AiText.php` (helpers purs testables),
+  `public/ajax/enrich.php` (endpoint), `public/front/config.form.php` (config). Tests :
+  `tests/AiTextTest.php` (`php tests/AiTextTest.php`).
 
 ## Reste à faire
 

@@ -16,11 +16,9 @@
  */
 
 use GlpiPlugin\Mail2glpi\AiClient;
+use GlpiPlugin\Mail2glpi\AiText;
 
 header('Content-Type: application/json; charset=utf-8');
-
-// L'inférence locale (surtout à froid) peut être longue : on évite que max_execution_time la coupe.
-@set_time_limit(0);
 
 /** Longueurs max envoyées au modèle (anti-DoS / perf). */
 if (!defined('MAIL2GLPI_AI_MAX_SUBJECT')) {
@@ -51,42 +49,6 @@ function mail2glpi_out(array $out, bool $debug_on, array $debug = [])
     exit;
 }
 
-/** Normalise une chaîne pour comparaison tolérante (minuscules + suppression des accents). */
-function mail2glpi_norm(string $s): string
-{
-    $s = mb_strtolower(trim($s), 'UTF-8');
-    if (class_exists('Normalizer')) {
-        $decomposed = \Normalizer::normalize($s, \Normalizer::FORM_D);
-        if (is_string($decomposed)) {
-            $s = (string) preg_replace('/\p{Mn}/u', '', $decomposed);
-        }
-    }
-    return $s;
-}
-
-/**
- * Convertit l'urgence renvoyée par le modèle en entier GLPI 1-5. Accepte un chiffre (1-5) ou un
- * mot fréquent (« Faible », « Haute », « critique »…), sinon null.
- *
- * @param mixed $raw
- */
-function mail2glpi_parse_urgency($raw): ?int
-{
-    if (is_int($raw) || (is_string($raw) && ctype_digit(trim((string) $raw)))) {
-        $n = (int) $raw;
-        return ($n >= 1 && $n <= 5) ? $n : null;
-    }
-    $map = [
-        'tres basse' => 1, 'tres faible' => 1, 'very low' => 1,
-        'basse' => 2, 'faible' => 2, 'low' => 2,
-        'moyenne' => 3, 'normale' => 3, 'medium' => 3, 'normal' => 3,
-        'haute' => 4, 'elevee' => 4, 'high' => 4, 'importante' => 4,
-        'tres haute' => 5, 'tres elevee' => 5, 'critique' => 5, 'urgente' => 5,
-        'urgent' => 5, 'very high' => 5, 'critical' => 5,
-    ];
-    return $map[mail2glpi_norm((string) $raw)] ?? null;
-}
-
 $debug_on = false;
 
 try {
@@ -98,7 +60,14 @@ try {
     $config = Config::getConfigurationValues('plugin:mail2glpi', [
         'ai_enabled', 'ai_base_url', 'ai_model', 'ai_timeout', 'ai_api_key', 'ai_debug',
     ]);
-    $debug_on = ($config['ai_debug'] ?? '0') === '1';
+    // _debug ne doit être renvoyé qu'à un admin : il révèle l'IP interne du LLM (base_url) et le
+    // contenu brut du modèle. On le réserve donc à config/UPDATE, même quand ai_debug est actif.
+    $debug_on = (($config['ai_debug'] ?? '0') === '1') && $is_admin;
+
+    // L'inférence locale (surtout à froid) peut être longue : on relève la limite PHP au timeout
+    // configuré + une marge, sans la supprimer totalement (garde-fou anti-DoS).
+    $ai_timeout = min(300, max(5, (int) ($config['ai_timeout'] ?? 60)));
+    @set_time_limit($ai_timeout + 15);
 
     // Self-test : réservé à un admin avec le debug actif (?selftest=1). Renvoie toujours le _debug.
     $selftest = isset($_GET['selftest']) && $is_admin && $debug_on;
@@ -122,19 +91,33 @@ try {
         mail2glpi_out([], $debug_on, ['stop' => 'empty_input']);
     }
 
-    // Catégories ITIL existantes (restreintes à l'entité courante par find()).
-    $categories  = []; // nom exact -> id
-    $cat_by_norm = []; // nom normalisé (sans accents/casse) -> ['id'=>…, 'name'=>…]
+    // Catégories ITIL existantes (restreintes à l'entité courante par find()). Tri explicite pour
+    // que le sous-ensemble exposé (plafond MAIL2GLPI_AI_MAX_CATEGORIES) soit déterministe.
+    $categories  = []; // nom complet exact -> id
+    $cat_by_norm = []; // nom complet normalisé (accents/casse) -> ['id'=>…, 'name'=>…]
+    $cat_by_leaf = []; // nom de feuille normalisé -> ['id'=>…, 'name'=>…] (null si homonyme ambigu)
     $itil = new ITILCategory();
-    foreach ($itil->find([], [], MAIL2GLPI_AI_MAX_CATEGORIES) as $row) {
+    foreach ($itil->find([], ['completename ASC'], MAIL2GLPI_AI_MAX_CATEGORIES) as $row) {
         $name = trim((string) ($row['completename'] ?? $row['name'] ?? ''));
         if ($name === '' || isset($categories[$name])) {
             continue;
         }
-        $categories[$name] = (int) $row['id'];
-        $norm = mail2glpi_norm($name);
+        $id = (int) $row['id'];
+        $categories[$name] = $id;
+        $norm = AiText::normalize($name);
         if (!isset($cat_by_norm[$norm])) {
-            $cat_by_norm[$norm] = ['id' => (int) $row['id'], 'name' => $name];
+            $cat_by_norm[$norm] = ['id' => $id, 'name' => $name];
+        }
+        // Repli sur la feuille (dernier segment après « > ») : les petits modèles renvoient souvent
+        // « Imprimantes » au lieu de « IT > Support > Imprimantes ». Homonymes -> null (pas de pose).
+        $parts = explode('>', $name);
+        $leaf  = AiText::normalize(trim((string) end($parts)));
+        if ($leaf !== '' && $leaf !== $norm) {
+            if (!array_key_exists($leaf, $cat_by_leaf)) {
+                $cat_by_leaf[$leaf] = ['id' => $id, 'name' => $name];
+            } elseif ($cat_by_leaf[$leaf] !== null && $cat_by_leaf[$leaf]['id'] !== $id) {
+                $cat_by_leaf[$leaf] = null;
+            }
         }
     }
 
@@ -173,7 +156,7 @@ try {
         $out['summary'] = $summary;
     }
 
-    $urgency = mail2glpi_parse_urgency($result['urgency'] ?? null);
+    $urgency = AiText::parseUrgency($result['urgency'] ?? null);
     if ($urgency !== null) {
         $out['urgency'] = $urgency;
     }
@@ -182,15 +165,18 @@ try {
     // tolérante aux accents/casse). On ne pose jamais une catégorie inventée.
     $category = trim((string) ($result['category'] ?? ''));
     if ($category !== '') {
+        $norm  = AiText::normalize($category);
+        $match = null;
         if (isset($categories[$category])) {
-            $out['category_id']   = $categories[$category];
-            $out['category_name'] = $category;
-        } else {
-            $norm = mail2glpi_norm($category);
-            if (isset($cat_by_norm[$norm])) {
-                $out['category_id']   = $cat_by_norm[$norm]['id'];
-                $out['category_name'] = $cat_by_norm[$norm]['name'];
-            }
+            $match = ['id' => $categories[$category], 'name' => $category];
+        } elseif (isset($cat_by_norm[$norm])) {
+            $match = $cat_by_norm[$norm];
+        } elseif (isset($cat_by_leaf[$norm])) { // isset() est faux si la feuille est ambiguë (null)
+            $match = $cat_by_leaf[$norm];
+        }
+        if ($match !== null) {
+            $out['category_id']   = $match['id'];
+            $out['category_name'] = $match['name'];
         }
     }
 
