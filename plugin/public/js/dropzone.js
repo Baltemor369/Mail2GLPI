@@ -23,6 +23,26 @@
     // dans la description). Incrémenté à chaque dépôt ; capturé dans la closure de l'appel IA.
     let enrichSeq = 0;
 
+    // Trace de diagnostic PERSISTANTE (sessionStorage) : survit à un rechargement de page, ce qui
+    // permet de comprendre l'ordre des événements (requête IA, réponse, application, navigation)
+    // même quand la page se recharge et efface la console. À lire via window.m2gDump() ; vider via
+    // window.m2gClear(). Inerte en usage normal (quelques écritures sessionStorage).
+    function m2gTrace(entry) {
+        try {
+            const arr = JSON.parse(sessionStorage.getItem("m2gTrace") || "[]");
+            arr.push(Object.assign({ at: new Date().toISOString() }, entry));
+            sessionStorage.setItem("m2gTrace", JSON.stringify(arr));
+        } catch (e) {
+            /* sessionStorage indisponible : on ignore (best-effort). */
+        }
+    }
+    window.m2gDump = function () { return JSON.parse(sessionStorage.getItem("m2gTrace") || "[]"); };
+    window.m2gClear = function () { sessionStorage.removeItem("m2gTrace"); return "trace vidée"; };
+    // Marqueur : enregistre TOUTE navigation/rechargement de la page (et son URL courante).
+    window.addEventListener("beforeunload", function () {
+        m2gTrace({ t: "beforeunload", url: location.href });
+    });
+
     document.addEventListener("dragover", onDragOver, true);
     document.addEventListener("dragleave", onDragLeave, true);
     document.addEventListener("drop", onDocumentDrop, true);
@@ -65,6 +85,9 @@
         if (!file) {
             return;
         }
+        // Nouvelle trace par dépôt (on repart propre) pour un diagnostic lisible.
+        try { sessionStorage.removeItem("m2gTrace"); } catch (e) { /* ignore */ }
+        m2gTrace({ t: "drop", file: file.name });
         if (/\.eml$/i.test(file.name)) {
             parseEmlAndFill(file, dropzone);
         } else if (/\.msg$/i.test(file.name)) {
@@ -156,16 +179,22 @@
     }
 
     function fillForm(data, dropzone, bundle) {
+        m2gTrace({ t: "fillForm:start", titleLen: (data.title || "").length, bodyPlainLen: (data.body_plain || "").length });
         setFieldValue('[name="name"]', data.title);
         setDescription(data.content);
 
         if (data.source_id) {
+            m2gTrace({ t: "before:source" });
             setDropdown('[name="requesttypes_id"]', data.source_id, "E-Mail");
+            m2gTrace({ t: "after:source" });
         }
         if (data.requester) {
+            m2gTrace({ t: "before:requester" });
             setRequester(data.requester);
+            m2gTrace({ t: "after:requester" });
         }
         const attached = attachFileObjects(bundle.files);
+        m2gTrace({ t: "after:attach", attached: attached });
 
         // TODO : rattacher les observateurs (Cc) via le widget acteurs (data-actor-type="observer").
         const summary = buildSummary(data, bundle, attached);
@@ -208,8 +237,10 @@
         formData.append("body", body);
 
         console.debug("[mail2glpi] IA → enrich.php", { subjectLen: subject.length, bodyLen: body.length });
+        m2gTrace({ t: "request", seq: mySeq, subjectLen: subject.length, bodyLen: body.length });
         postForm("ajax/enrich.php", formData)
             .then(({ ok, json }) => {
+                m2gTrace({ t: "response", seq: mySeq, ok: ok, stale: isStale(), json: json });
                 if (isStale()) {
                     return; // un dépôt plus récent a pris la main : résultat obsolète, on l'ignore.
                 }
@@ -221,6 +252,7 @@
                 applyAiEnrichment(json, dropzone, baseMsg, baseKind);
             })
             .catch((err) => {
+                m2gTrace({ t: "error", seq: mySeq, stale: isStale(), err: String(err) });
                 if (isStale()) {
                     return;
                 }
@@ -232,6 +264,7 @@
 
     function applyAiEnrichment(ai, dropzone, baseMsg, baseKind) {
         console.debug("[mail2glpi] applyAiEnrichment", ai);
+        m2gTrace({ t: "apply:start", ai: ai });
         const done = [];
         if (ai.category_id) {
             // quiet=true : ne PAS déclencher le rechargement de gabarit GLPI (qui resoumet le
@@ -249,6 +282,15 @@
             prependSummary(ai.summary);
             done.push("résumé");
         }
+        // Valeurs RÉELLEMENT en place dans les champs après application (diagnostic).
+        const catEl = document.querySelector('[name="itilcategories_id"]');
+        const urgEl = document.querySelector('[name="urgency"]');
+        m2gTrace({
+            t: "apply:done",
+            done: done,
+            catValue: catEl ? catEl.value : null,
+            urgValue: urgEl ? urgEl.value : null,
+        });
         const tail = done.length > 0 ? "IA : " + done.join(" + ") + " ajouté(s)" : "IA : rien à suggérer";
         setStatus(dropzone, baseMsg + " · " + tail, baseKind);
     }

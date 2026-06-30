@@ -5,6 +5,16 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.8.2] - 2026-06-30
+
+### Ajouté (diagnostic temporaire)
+- **Trace persistante** (`sessionStorage`) dans `dropzone.js` : enregistre l'ordre des événements
+  du dépôt (drop → fillForm → source/demandeur → requête IA → réponse → application) **et tout
+  rechargement de page** (`beforeunload`). Survit au rechargement (qui efface la console), pour
+  identifier précisément d'où vient la navigation qui détruit l'enrichissement IA.
+- Lecture via `window.m2gDump()` en console ; remise à zéro via `window.m2gClear()`.
+- À retirer une fois la cause trouvée et corrigée.
+
 ## [0.8.1] - 2026-06-30
 
 ### Corrigé
