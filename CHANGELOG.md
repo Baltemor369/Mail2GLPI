@@ -5,6 +5,23 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.9.0] - 2026-06-30
+
+### Ajouté
+- **Bouton « Suggestions IA » par dépôt** : une case (cochée par défaut) sous la dropzone permet à
+  l'agent d'activer/désactiver l'IA pour CE ticket. Décochée → pré-remplissage sans appel au LLM.
+  Affichée seulement si l'IA est activée et configurée côté serveur.
+
+### Modifié
+- **Plafonds des pièces jointes relevés** : 20 Mo par pièce (avant 5 Mo), 30 Mo cumulés (avant
+  10 Mo), fichier `.eml`/`.msg` jusqu'à 50 Mo (avant 10 Mo). NB : la limite RÉELLE reste celle de
+  **PHP** (`post_max_size`, `upload_max_filesize`) et de **GLPI** (taille max des documents) — à
+  relever côté serveur pour réellement accepter de grosses PJ (cf. docs/INSTALLATION.md).
+
+### Retiré
+- Instrumentation de diagnostic temporaire (trace `sessionStorage`) ajoutée en 0.8.2, devenue
+  inutile une fois la cause du rechargement identifiée et corrigée.
+
 ## [0.8.3] - 2026-06-30
 
 ### Corrigé (cause racine du « rien ne s'applique »)

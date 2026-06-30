@@ -46,7 +46,11 @@ Le plugin accepte deux formats de fichier :
 
 ## 3 bis. Suggestions IA (si activées par l'administrateur)
 
-Si votre administrateur a activé l'IA, quelques secondes après le dépôt vous verrez **en plus** :
+Si votre administrateur a activé l'IA, une case **« Suggestions IA … »** apparaît sous la zone de
+dépôt, **cochée par défaut**. Vous pouvez la **décocher avant de déposer** si vous voulez un
+pré-remplissage **sans IA** (juste le contenu de l'e-mail, sans appel au modèle).
+
+Lorsqu'elle est cochée, quelques secondes après le dépôt vous verrez **en plus** :
 
 - une **catégorie** proposée (si elle correspond à une catégorie existante),
 - une **urgence** positionnée,

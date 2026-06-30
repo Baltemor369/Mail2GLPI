@@ -93,6 +93,27 @@ Aucune configuration supplémentaire n'est requise pour le fonctionnement de bas
 
 ---
 
+## 5 bis. Pièces jointes volumineuses (PDF de plusieurs Mo)
+
+Le plugin accepte jusqu'à **20 Mo par pièce** et **30 Mo cumulés**. Mais la limite **réelle** est
+imposée par **PHP** puis par **GLPI** ; par défaut PHP plafonne souvent à **2 Mo**, ce qui rejette
+les PDF plus gros. Pour réellement accepter de grosses pièces jointes :
+
+1. **PHP** (`php.ini` du serveur web ; ex. `/etc/php/8.x/apache2/php.ini`) :
+   ```ini
+   upload_max_filesize = 50M
+   post_max_size       = 60M
+   memory_limit        = 256M
+   ```
+   puis redémarrer le service web (`sudo systemctl restart apache2`).
+2. **GLPI** : *Configuration > Assistance* (et la politique de documents) — vérifier la **taille
+   maximale des documents** et les **types de fichiers** autorisés.
+
+> Garder une cohérence : `post_max_size` ≥ `upload_max_filesize`, et les plafonds GLPI ≥ taille des
+> PJ attendues. Les plafonds du plugin (20/30 Mo) ne servent à rien s'ils dépassent ceux de PHP/GLPI.
+
+---
+
 ## 6. Mettre à jour
 
 ```bash

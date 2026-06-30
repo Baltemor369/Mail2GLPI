@@ -36,3 +36,13 @@
 .mail2glpi-dropzone__status--success {
     color: #2f855a;
 }
+
+.mail2glpi-ai-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    font-size: 0.9em;
+    color: #5a6b7b;
+    cursor: pointer;
+}

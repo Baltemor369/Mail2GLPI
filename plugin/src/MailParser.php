@@ -25,10 +25,10 @@ class MailParser
     private const MAX_PARTS = 200;
 
     /** Taille max d'une pièce jointe dont on renvoie le contenu (au-delà : métadonnées seules). */
-    private const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
+    private const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 
     /** Budget cumulé du contenu des pièces jointes renvoyé (au-delà : métadonnées seules). */
-    private const MAX_TOTAL_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+    private const MAX_TOTAL_ATTACHMENT_BYTES = 30 * 1024 * 1024;
 
     /** Compteur de parties explorées sur l'analyse en cours. */
     private int $partCount = 0;

@@ -7,7 +7,7 @@
  * convertir un fichier e-mail (.eml) glissé en pré-remplissage du formulaire.
  */
 
-define('PLUGIN_MAIL2GLPI_VERSION', '0.8.3');
+define('PLUGIN_MAIL2GLPI_VERSION', '0.9.0');
 define('PLUGIN_MAIL2GLPI_MIN_GLPI_VERSION', '11.0.0');
 define('PLUGIN_MAIL2GLPI_MAX_GLPI_VERSION', '11.1.99');
 
@@ -114,6 +114,23 @@ function plugin_mail2glpi_itil_section(array $params)
         return;
     }
 
+    // Case « Suggestions IA » : affichée uniquement si l'IA est activée ET configurée côté serveur.
+    // Cochée par défaut ; si l'agent la décoche, le dépôt pré-remplit sans appeler le LLM.
+    $cfg = Config::getConfigurationValues('plugin:mail2glpi', ['ai_enabled', 'ai_base_url', 'ai_model']);
+    $ai_ready = ($cfg['ai_enabled'] ?? '0') === '1'
+        && trim((string) ($cfg['ai_base_url'] ?? '')) !== ''
+        && trim((string) ($cfg['ai_model'] ?? '')) !== '';
+
+    $ai_toggle = '';
+    if ($ai_ready) {
+        $ai_toggle = <<<TOGGLE
+            <label class="mail2glpi-ai-toggle">
+                    <input type="checkbox" id="mail2glpi-ai-toggle" checked>
+                    Suggestions IA (catégorie, urgence, résumé) à ce dépôt
+                </label>
+TOGGLE;
+    }
+
     echo <<<HTML
         <section class="mail2glpi-section">
             <div id="mail2glpi-dropzone" class="mail2glpi-dropzone" tabindex="0">
@@ -122,6 +139,7 @@ function plugin_mail2glpi_itil_section(array $params)
                 </span>
                 <p class="mail2glpi-dropzone__status" role="status" aria-live="polite"></p>
             </div>
+            {$ai_toggle}
         </section>
         HTML;
 }

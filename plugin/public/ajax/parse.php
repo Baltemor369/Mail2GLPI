@@ -18,10 +18,12 @@ use GlpiPlugin\Mail2glpi\TicketMapper;
 
 header('Content-Type: application/json; charset=utf-8');
 
-// Taille maximale acceptée pour un fichier .eml (10 Mo). define() gardé pour éviter toute
-// redéclaration en cas d'inclusion multiple.
+// Taille maximale acceptée pour un fichier .eml / un message .msg reconstitué (50 Mo). NB : la
+// limite RÉELLE d'upload reste celle de PHP (post_max_size / upload_max_filesize) et de GLPI
+// (Configuration > Assistance / Documents) — à relever côté serveur pour les grosses pièces.
+// define() gardé pour éviter toute redéclaration en cas d'inclusion multiple.
 if (!defined('MAIL2GLPI_MAX_BYTES')) {
-    define('MAIL2GLPI_MAX_BYTES', 10 * 1024 * 1024);
+    define('MAIL2GLPI_MAX_BYTES', 50 * 1024 * 1024);
 }
 
 /**
