@@ -40,6 +40,9 @@ function mail2glpi_fail(int $status, string $message)
     exit;
 }
 
+// Messages traduits (langue de l'utilisateur GLPI). Définie dans setup.php (plugin chargé au boot).
+$T = mail2glpi_i18n();
+
 try {
     // Sécurité : utilisateur authentifié + droit de créer des tickets.
     //
@@ -50,7 +53,7 @@ try {
     Session::checkLoginUser();
 
     if (!Session::haveRight('ticket', CREATE)) {
-        mail2glpi_fail(403, __('Droit de création de ticket requis.', 'mail2glpi'));
+        mail2glpi_fail(403, $T['err_need_create_right']);
     }
 
     $mode = $_POST['mode'] ?? 'eml';
@@ -64,7 +67,7 @@ try {
         // Borne de taille équivalente au .eml : ces champs sont entièrement contrôlés par le
         // client, on évite donc une amplification mémoire (anti-DoS).
         if (strlen($subject) + strlen($body_html) + strlen($body_text) > MAIL2GLPI_MAX_BYTES) {
-            mail2glpi_fail(400, __('Message trop volumineux.', 'mail2glpi'));
+            mail2glpi_fail(400, $T['err_msg_too_large']);
         }
 
         $parsed = [
@@ -82,29 +85,29 @@ try {
         // Mode .eml : analyse côté serveur du fichier uploadé.
         $upload = $_FILES['emlfile'] ?? null;
         if ($upload === null || ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-            mail2glpi_fail(400, __('Aucun fichier reçu.', 'mail2glpi'));
+            mail2glpi_fail(400, $T['err_no_file']);
         }
 
         // On ne fait jamais confiance au nom de fichier client (sécurité) : on l'utilise seulement
         // pour valider l'extension et on lit uniquement le fichier temporaire uploadé.
         $extension = strtolower(pathinfo((string) $upload['name'], PATHINFO_EXTENSION));
         if ($extension !== 'eml') {
-            mail2glpi_fail(415, __('Seuls les fichiers .eml sont pris en charge.', 'mail2glpi'));
+            mail2glpi_fail(415, $T['err_only_eml']);
         }
 
         // La taille réelle sur disque prime sur la taille déclarée par le client (falsifiable).
         if (!is_uploaded_file($upload['tmp_name']) || filesize($upload['tmp_name']) > MAIL2GLPI_MAX_BYTES) {
-            mail2glpi_fail(400, __('Fichier invalide ou trop volumineux.', 'mail2glpi'));
+            mail2glpi_fail(400, $T['err_invalid_or_large']);
         }
 
         $raw = file_get_contents($upload['tmp_name']);
         if ($raw === false || $raw === '') {
-            mail2glpi_fail(400, __('Fichier illisible.', 'mail2glpi'));
+            mail2glpi_fail(400, $T['err_unreadable_file']);
         }
 
         $parsed = (new MailParser())->parse($raw);
     } else {
-        mail2glpi_fail(400, __('Mode non pris en charge.', 'mail2glpi'));
+        mail2glpi_fail(400, $T['err_unsupported_mode']);
     }
 
     $mapped = (new TicketMapper())->map($parsed);
@@ -151,5 +154,5 @@ try {
 } catch (\Throwable $e) {
     // On journalise le détail technique mais on ne le renvoie pas au client.
     trigger_error('mail2glpi parse error: ' . $e->getMessage(), E_USER_WARNING);
-    mail2glpi_fail(500, __("Échec de l'analyse de l'e-mail.", 'mail2glpi'));
+    mail2glpi_fail(500, $T['err_parse_failed']);
 }

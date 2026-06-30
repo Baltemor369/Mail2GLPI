@@ -70,13 +70,13 @@
         } else if (/\.msg$/i.test(file.name)) {
             parseMsgAndFill(file, dropzone);
         } else {
-            setStatus(dropzone, "Format non pris en charge : déposez un fichier .eml ou .msg.", "error");
+            setStatus(dropzone, t("unsupported_format"), "error");
         }
     }
 
     /** .eml : le serveur analyse le fichier et renvoie le mapping (PJ incluses en base64). */
     function parseEmlAndFill(file, dropzone) {
-        setStatus(dropzone, "Analyse de l'e-mail en cours…");
+        setStatus(dropzone, t("parsing_eml"));
         const formData = new FormData();
         formData.append("emlfile", file);
         sendToServer(formData, dropzone, (data) => {
@@ -87,14 +87,14 @@
     /** .msg : lu dans le navigateur ; ses champs vont au serveur, ses PJ restent côté client. */
     function parseMsgAndFill(file, dropzone) {
         if (typeof MSGReader !== "function") {
-            setStatus(dropzone, "Lecteur .msg indisponible (bibliothèque non chargée).", "error");
+            setStatus(dropzone, t("msg_reader_unavailable"), "error");
             return;
         }
         if (typeof file.arrayBuffer !== "function") {
-            setStatus(dropzone, "Navigateur trop ancien pour lire les fichiers .msg.", "error");
+            setStatus(dropzone, t("browser_too_old"), "error");
             return;
         }
-        setStatus(dropzone, "Lecture du message Outlook…");
+        setStatus(dropzone, t("reading_msg"));
 
         file.arrayBuffer()
             .then((buffer) => {
@@ -104,10 +104,10 @@
                     reader = new MSGReader(buffer);
                     fileData = reader.getFileData();
                 } catch (e) {
-                    throw new Error("Fichier .msg illisible.");
+                    throw new Error(t("msg_unreadable"));
                 }
                 if (!fileData || fileData.error) {
-                    throw new Error("Fichier .msg illisible.");
+                    throw new Error(t("msg_unreadable"));
                 }
 
                 const formData = new FormData();
@@ -122,7 +122,7 @@
                     fillForm(data, dropzone, bundleFromMsgAttachments(reader, fileData.attachments || []));
                 });
             })
-            .catch((error) => setStatus(dropzone, "Erreur : " + error.message, "error"));
+            .catch((error) => setStatus(dropzone, t("error_prefix", { msg: error.message }), "error"));
     }
 
     /** Analyse (parse.php) : extrait le mapping puis remplit le formulaire. */
@@ -130,11 +130,11 @@
         postForm("ajax/parse.php", formData)
             .then(({ ok, json }) => {
                 if (!ok || json.error) {
-                    throw new Error(json.error || "Échec de l'analyse.");
+                    throw new Error(json.error || t("parse_failed"));
                 }
                 onData(json.data);
             })
-            .catch((error) => setStatus(dropzone, "Erreur : " + error.message, "error"));
+            .catch((error) => setStatus(dropzone, t("error_prefix", { msg: error.message }), "error"));
     }
 
     /** POST générique vers un endpoint du plugin (gère le CSRF AJAX). Résout { ok, json }. */
@@ -170,10 +170,10 @@
         let baseKind;
         if (bundle.eligible > 0 && attached === 0) {
             // Champs remplis mais aucune PJ ajoutée (éditeur non prêt / uploader indisponible).
-            baseMsg = "Ticket pré-rempli (pièces jointes à ajouter manuellement). " + summary;
+            baseMsg = t("prefilled_attach_manual") + (summary ? " " + summary : "");
             baseKind = "error";
         } else {
-            baseMsg = "Ticket pré-rempli. " + summary;
+            baseMsg = t("prefilled") + (summary ? " " + summary : "");
             baseKind = "success";
         }
         setStatus(dropzone, baseMsg, baseKind);
@@ -213,7 +213,7 @@
             finish();
             return;
         }
-        setStatus(dropzone, baseMsg + " · IA : analyse en cours…", baseKind);
+        setStatus(dropzone, baseMsg + " · " + t("ai_analyzing"), baseKind);
 
         // On capture la séquence courante : tout dépôt ultérieur l'incrémentera et rendra
         // ce résultat périmé (à ignorer pour ne pas corrompre le formulaire du nouveau dépôt).
@@ -255,20 +255,20 @@
         if (ai.category_id) {
             // quiet=true : ne PAS déclencher le rechargement de gabarit GLPI (qui resoumet le
             // formulaire et provoquait un 403). La catégorie reste posée pour la création.
-            setDropdown('[name="itilcategories_id"]', ai.category_id, ai.category_name || "Catégorie", true);
-            done.push("catégorie");
+            setDropdown('[name="itilcategories_id"]', ai.category_id, ai.category_name || t("category_fallback"), true);
+            done.push(t("item_category"));
         }
         if (ai.urgency) {
             // quiet=true : comme la catégorie, on évite de réveiller un handler GLPI susceptible de
             // recharger/resoumettre le formulaire (le rechargement détruisait l'enrichissement IA).
-            setDropdown('[name="urgency"]', ai.urgency, "Urgence " + ai.urgency, true);
-            done.push("urgence");
+            setDropdown('[name="urgency"]', ai.urgency, t("urgency_label", { n: ai.urgency }), true);
+            done.push(t("item_urgency"));
         }
         if (ai.summary) {
             prependSummary(ai.summary);
-            done.push("résumé");
+            done.push(t("item_summary"));
         }
-        const tail = done.length > 0 ? "IA : " + done.join(" + ") + " ajouté(s)" : "IA : rien à suggérer";
+        const tail = done.length > 0 ? t("ai_added", { items: done.join(" + ") }) : t("ai_nothing");
         setStatus(dropzone, baseMsg + " · " + tail, baseKind);
     }
 
@@ -278,7 +278,7 @@
         if (!editor) {
             return;
         }
-        const block = "<p><strong>Résumé (IA) :</strong> " + escapeHtml(summary) + "</p><p></p>";
+        const block = "<p><strong>" + escapeHtml(t("ai_summary_label")) + "</strong> " + escapeHtml(summary) + "</p><p></p>";
         editor.setContent(block + editor.getContent());
     }
 
@@ -482,19 +482,19 @@
     function buildSummary(data, bundle, attached) {
         const parts = [];
         if (data.requester_email) {
-            parts.push("Demandeur : " + data.requester_email);
+            parts.push(t("requester_label", { email: data.requester_email }));
         }
 
         const total = bundle.eligible + bundle.skipped;
         if (total > 0) {
             if (bundle.eligible === 0) {
-                parts.push(bundle.skipped + " pièce(s) jointe(s) ignorée(s)");
+                parts.push(t("att_skipped", { n: bundle.skipped }));
             } else {
                 let msg = attached >= bundle.eligible
-                    ? bundle.eligible + " pièce(s) jointe(s) ajoutée(s)"
-                    : attached + "/" + bundle.eligible + " pièce(s) jointe(s) ajoutée(s)";
+                    ? t("att_added", { n: bundle.eligible })
+                    : t("att_added_partial", { a: attached, b: bundle.eligible });
                 if (bundle.skipped > 0) {
-                    msg += " · " + bundle.skipped + " ignorée(s)";
+                    msg += " · " + t("att_skipped_suffix", { n: bundle.skipped });
                 }
                 parts.push(msg);
             }
@@ -505,6 +505,40 @@
     /* ----------------------------------------------------------------- */
     /* Helpers divers                                                    */
     /* ----------------------------------------------------------------- */
+
+    var i18nDict = null;
+
+    /** Charge (une fois) le dictionnaire de traduction depuis l'attribut data- de la dropzone. */
+    function i18n() {
+        if (i18nDict) {
+            return i18nDict;
+        }
+        var el = document.getElementById(DROPZONE_ID);
+        var raw = el && el.getAttribute("data-mail2glpi-i18n");
+        if (raw) {
+            try {
+                i18nDict = JSON.parse(raw);
+            } catch (e) {
+                i18nDict = {};
+            }
+        }
+        return i18nDict || {};
+    }
+
+    /**
+     * Traduction : récupère la chaîne `key` (langue de l'utilisateur GLPI, fournie par le serveur)
+     * et remplace les placeholders {x}. Repli sur la clé elle-même si le dictionnaire est absent.
+     */
+    function t(key, params) {
+        var dict = i18n();
+        var str = Object.prototype.hasOwnProperty.call(dict, key) ? dict[key] : key;
+        if (params) {
+            Object.keys(params).forEach(function (name) {
+                str = str.replace("{" + name + "}", params[name]);
+            });
+        }
+        return str;
+    }
 
     function endpointUrl(path) {
         const root = ((typeof CFG_GLPI !== "undefined" && CFG_GLPI.root_doc) || "").replace(/\/$/, "");
@@ -525,7 +559,7 @@
             return JSON.parse(text);
         } catch (e) {
             // Réponse non-JSON (page d'erreur HTML, session expirée…) : message lisible.
-            throw new Error("Réponse inattendue du serveur (session expirée ?). Rechargez la page.");
+            throw new Error(t("unexpected_response"));
         }
     }
 

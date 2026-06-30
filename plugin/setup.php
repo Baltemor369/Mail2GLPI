@@ -7,7 +7,7 @@
  * convertir un fichier e-mail (.eml) glissé en pré-remplissage du formulaire.
  */
 
-define('PLUGIN_MAIL2GLPI_VERSION', '1.0.0');
+define('PLUGIN_MAIL2GLPI_VERSION', '1.1.0');
 define('PLUGIN_MAIL2GLPI_MIN_GLPI_VERSION', '11.0.0');
 define('PLUGIN_MAIL2GLPI_MAX_GLPI_VERSION', '11.1.99');
 
@@ -99,6 +99,21 @@ function plugin_mail2glpi_check_config($verbose = false)
 }
 
 /**
+ * Renvoie le dictionnaire de traduction pour la langue de l'utilisateur GLPI (anglais par défaut ;
+ * toute langue commençant par « fr » bascule en français). Voir locales/strings.php.
+ *
+ * @return array<string, string>
+ */
+function mail2glpi_i18n()
+{
+    /** @var array<string, array<string, string>> $strings */
+    $strings = include __DIR__ . '/locales/strings.php';
+    $lang    = (string) ($_SESSION['glpilanguage'] ?? 'en_GB');
+    $code    = stripos($lang, 'fr') === 0 ? 'fr' : 'en';
+    return $strings[$code] ?? $strings['en'];
+}
+
+/**
  * Rendu de la section ITIL : conteneur de la dropzone, affiché uniquement à la création
  * d'un ticket. Le comportement (drop, parsing, pré-remplissage) est câblé par dropzone.js.
  *
@@ -114,6 +129,8 @@ function plugin_mail2glpi_itil_section(array $params)
         return;
     }
 
+    $t = mail2glpi_i18n();
+
     // Case « Suggestions IA » : affichée uniquement si l'IA est activée ET configurée côté serveur.
     // Cochée par défaut ; si l'agent la décoche, le dépôt pré-remplit sans appeler le LLM.
     $cfg = Config::getConfigurationValues('plugin:mail2glpi', ['ai_enabled', 'ai_base_url', 'ai_model']);
@@ -121,22 +138,27 @@ function plugin_mail2glpi_itil_section(array $params)
         && trim((string) ($cfg['ai_base_url'] ?? '')) !== ''
         && trim((string) ($cfg['ai_model'] ?? '')) !== '';
 
-    $ai_toggle = '';
+    $label       = htmlspecialchars($t['dropzone_label'], ENT_QUOTES, 'UTF-8');
+    $toggle_text = htmlspecialchars($t['ai_toggle_label'], ENT_QUOTES, 'UTF-8');
+    $ai_toggle   = '';
     if ($ai_ready) {
         $ai_toggle = <<<TOGGLE
             <label class="mail2glpi-ai-toggle">
                     <input type="checkbox" id="mail2glpi-ai-toggle" checked>
-                    Suggestions IA (catégorie, urgence, résumé) à ce dépôt
+                    {$toggle_text}
                 </label>
 TOGGLE;
     }
 
+    // Dictionnaire transmis au JS via un attribut data- (lu par dropzone.js). On évite un <script>
+    // inline, susceptible d'être bloqué par la CSP de GLPI 11. L'attribut est échappé pour le HTML.
+    $i18n_attr = htmlspecialchars((string) json_encode($t, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+
     echo <<<HTML
         <section class="mail2glpi-section">
-            <div id="mail2glpi-dropzone" class="mail2glpi-dropzone" tabindex="0">
-                <span class="mail2glpi-dropzone__label">
-                    Glissez ici un e-mail (.eml ou .msg) pour pré-remplir le ticket
-                </span>
+            <div id="mail2glpi-dropzone" class="mail2glpi-dropzone" tabindex="0"
+                 data-mail2glpi-i18n="{$i18n_attr}">
+                <span class="mail2glpi-dropzone__label">{$label}</span>
                 <p class="mail2glpi-dropzone__status" role="status" aria-live="polite"></p>
             </div>
             {$ai_toggle}

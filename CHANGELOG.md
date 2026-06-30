@@ -5,6 +5,19 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [1.1.0] - 2026-06-30
+
+### Ajouté
+- **Internationalisation (anglais / français)** : les textes vus par l'agent (zone de dépôt, case
+  IA, messages de statut/erreur) s'affichent selon la **langue de l'utilisateur GLPI** (anglais par
+  défaut, français si la langue commence par « fr »). Dictionnaire dans `locales/strings.php`
+  (sans gettext) ; transmis au JS via un attribut `data-` (compatible CSP). Pour ajouter une
+  langue : dupliquer un bloc et traduire les valeurs.
+
+### Notes
+- La **page de configuration** (admin) et le titre de repli « (Sans objet) » restent en français
+  pour l'instant — à internationaliser ultérieurement si besoin.
+
 ## [1.0.0] - 2026-06-30
 
 Première version **stable**. Fonctionnalité complète : dépôt `.eml`/`.msg` → pré-remplissage du
