@@ -5,6 +5,16 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [0.8.1] - 2026-06-30
+
+### Corrigé
+- **Aucune suggestion appliquée au dépôt réel** alors que le serveur répondait (HTTP 200). En
+  posant l'**urgence** via un `change` classique, `applyAiEnrichment` réveillait un handler GLPI
+  qui **rechargeait le formulaire** : le rechargement détruisait l'enrichissement (catégorie/
+  urgence/résumé jamais appliqués) et empêchait DevTools d'afficher la réponse (« Failed to load
+  response data »). L'urgence est désormais posée « en silence » (`change.select2`), comme la
+  catégorie — plus de rechargement, les suggestions s'appliquent et persistent.
+
 ## [0.8.0] - 2026-06-30
 
 Jalon : **Suggestions IA validées en production** (catégorie, urgence, résumé via LLM local,

@@ -240,7 +240,9 @@
             done.push("catégorie");
         }
         if (ai.urgency) {
-            setDropdown('[name="urgency"]', ai.urgency, "Urgence " + ai.urgency);
+            // quiet=true : comme la catégorie, on évite de réveiller un handler GLPI susceptible de
+            // recharger/resoumettre le formulaire (le rechargement détruisait l'enrichissement IA).
+            setDropdown('[name="urgency"]', ai.urgency, "Urgence " + ai.urgency, true);
             done.push("urgence");
         }
         if (ai.summary) {
